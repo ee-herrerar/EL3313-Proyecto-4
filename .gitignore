@@ -53,3 +53,31 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+
+# Vivado - Generated files
+*.cache/
+*.hw/
+*.ip_user_files/
+*.sim/
+*.runs/
+*.gen/
+.Xil/
+
+# Logs and temporary files
+*.jou
+*.log
+*.str
+*.backup.jou
+*.backup.log
+
+# Generated implementation files
+*.bit
+*.bin
+*.dcp
+*.ltx
+*.wdb
+
+# Operating system
+.DS_Store
+Thumbs.db
