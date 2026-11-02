@@ -8,7 +8,8 @@ El diseño integra un sistema digital embebido basado en MicroBlaze V con un inv
 
 ### Nivel 2
 ![Diagrama general del sistema, nivel 2](figuras/DN2.svg)
-
+### Nivel 3
+![Diagrama general del sistema, nivel 3](figuras/DN3.svg)
 ## Requisitos del sistema
 - Inversor monofásico en puente H alimentado entre 12 y 24 V DC, con carga RL dimensionada y justificada.
 - Seguimiento de una referencia sinusoidal de 50 Hz con amplitudes de 0,2 A, 0,5 A y 1,0 A pico.
