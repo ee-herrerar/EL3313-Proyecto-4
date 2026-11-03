@@ -30,14 +30,6 @@ Diseñar un sistema digital embebido basado en MicroBlaze V, integrando perifér
 
 6. Establecer una estrategia de verificación basada en simulaciones, testbenches autoverificables y pruebas funcionales en FPGA para comprobar los módulos digitales y su integración.
 
-## Diagramas generales del sistema
-### Nivel 1
-![Diagrama general del sistema, nivel 1](figuras/DN1.svg)
-
-### Nivel 2
-![Diagrama general del sistema, nivel 2](figuras/DN2.svg)
-### Nivel 3
-![Diagrama general del sistema, nivel 3](figuras/DN3.svg)
 
 ## 2. Requisitos del sistema
 
@@ -57,11 +49,46 @@ El sistema deberá cumplir con los siguientes requisitos:
 
 Los parámetros de conmutación, muestreo y control deberán definirse y justificarse de acuerdo con las condiciones de operación del sistema.
 
-## Diseño general del sistema
-El sistema se organiza en módulos de adquisición, procesamiento, actuación y potencia. La corriente medida se entrega al MicroBlaze V para ejecutar el control periódico; su salida actualiza el periférico PWM, que acciona el puente H y la carga RL. La plataforma contempla además la exportación de muestras a una computadora por UART.
+## 3. Arquitectura y diseño de hardware
 
-## Diseño de hardware
-La plataforma digital se implementa en FPGA con MicroBlaze V, memoria local, temporizador, UART y los periféricos de entrada y salida requeridos. El XADC adquiere la corriente y el periférico PWM personalizado genera las señales unipolares complementarias con tiempo muerto. La etapa de potencia comprende el puente H, sus circuitos de accionamiento y la carga RL.
+### 3.1. Arquitectura general
+
+El sistema se desarrolla sobre una FPGA Artix-7 mediante una arquitectura modular basada en el procesador MicroBlaze V. Este se encarga de ejecutar el software de control en C y administrar los periféricos digitales mediante interfaces AXI4-Lite.
+
+La arquitectura incorpora memoria BRAM para el almacenamiento de instrucciones y datos, un temporizador para generar interrupciones periódicas, una interfaz UART para transmitir información y módulos de adquisición y generación PWM.
+
+El funcionamiento general consiste en adquirir una muestra de corriente mediante el ADC/XADC, procesarla utilizando el controlador PR discreto y actualizar el periférico PWM para generar las señales de actuación correspondientes.
+
+### 3.2. Módulos del sistema
+
+Los principales componentes de la arquitectura digital y sus funciones se presentan a continuación.
+
+### 3.3. Diagramas del sistema
+
+## Diagramas generales del sistema
+### Nivel 1
+![Diagrama general del sistema, nivel 1](figuras/DN1.svg)
+
+### Nivel 2
+![Diagrama general del sistema, nivel 2](figuras/DN2.svg)
+### Nivel 3
+![Diagrama general del sistema, nivel 3](figuras/DN3.svg)
+
+
+| Módulo | Función |
+|---|---|
+| MicroBlaze V | Ejecuta el programa de control y administra los periféricos. |
+| Memoria BRAM y caché | Almacenan instrucciones y datos y permiten optimizar el acceso a instrucciones. |
+| AXI SmartConnect | Interconecta el procesador con los periféricos mediante AXI. |
+| AXI Timer | Genera la base temporal del control periódico. |
+| AXI Interrupt Controller | Gestiona las interrupciones dirigidas al procesador. |
+| AXI UART Lite | Permite transmitir las muestras almacenadas hacia una computadora. |
+| AXI GPIO | Gestiona los botones y los indicadores de estado. |
+| ADC/XADC | Adquiere las mediciones de corriente. |
+| PWM personalizado | Genera la modulación unipolar con tiempo muerto configurable. |
+| MDM | Permite depurar el sistema embebido. |
+
+Cada módulo se integra a la arquitectura mediante interfaces definidas, permitiendo su desarrollo y verificación individual antes de la integración completa.
 
 ## Fases y Módulos de la Etapa Digital
 El desarrollo se plantea de forma incremental:
