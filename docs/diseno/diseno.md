@@ -38,13 +38,24 @@ Diseñar un sistema digital embebido basado en MicroBlaze V, integrando perifér
 ![Diagrama general del sistema, nivel 2](figuras/DN2.svg)
 ### Nivel 3
 ![Diagrama general del sistema, nivel 3](figuras/DN3.svg)
-## Requisitos del sistema
-- Inversor monofásico en puente H alimentado entre 12 y 24 V DC, con carga RL dimensionada y justificada.
-- Seguimiento de una referencia sinusoidal de 50 Hz con amplitudes de 0,2 A, 0,5 A y 1,0 A pico.
-- Control de corriente con un regulador PR discreto y modulación PWM unipolar con tiempo muerto.
-- Adquisición de corriente sincronizada con el PWM y comunicación de periféricos mediante registros AXI4(-Lite).
-- MicroBlaze V a 100 MHz, memoria local de 32 KB, caché de instrucciones de 8 KB y temporización periódica del lazo.
-- Periférico PWM personalizado con interfaz AXI4-Lite y al menos tres frecuencias de conmutación configurables.
+
+## 2. Requisitos del sistema
+
+El sistema deberá cumplir con los siguientes requisitos:
+
+1. **Etapa de potencia:** inversor monofásico en puente H, alimentado entre 12 y 24 V DC, con una carga RL dimensionada y justificada.
+
+2. **Referencia de corriente:** seguimiento de una señal sinusoidal de 50 Hz, con amplitudes de 0,2 A, 0,5 A y 1,0 A pico.
+
+3. **Control PWM:** implementación de un regulador PR discreto y generación de modulación PWM unipolar con tiempo muerto configurable.
+
+4. **Adquisición y comunicación:** medición de corriente sincronizada con el PWM y comunicación entre periféricos mediante registros AXI4-Lite.
+
+5. **Sistema embebido:** procesador MicroBlaze V a 100 MHz, con 32 KB de memoria local, 8 KB de caché de instrucciones y ejecución periódica mediante interrupciones.
+
+6. **Periférico personalizado:** desarrollo de un controlador PWM en SystemVerilog, con interfaz AXI4-Lite y al menos tres frecuencias de conmutación seleccionables.
+
+Los parámetros de conmutación, muestreo y control deberán definirse y justificarse de acuerdo con las condiciones de operación del sistema.
 
 ## Diseño general del sistema
 El sistema se organiza en módulos de adquisición, procesamiento, actuación y potencia. La corriente medida se entrega al MicroBlaze V para ejecutar el control periódico; su salida actualiza el periférico PWM, que acciona el puente H y la carga RL. La plataforma contempla además la exportación de muestras a una computadora por UART.
