@@ -148,7 +148,40 @@ flowchart TD
 ```
 
 ## Diseño de software
-La aplicación embebida en C ejecuta el lazo de control mediante interrupciones periódicas: adquiere la corriente, calcula la acción del PR y actualiza la referencia del PWM. También gestiona la solicitud de exportación del historial de muestras por UART.
+La aplicación embebida en C ejecuta el lazo de control mediante interrupciones periódicas: adquiere la corriente, calcula la acción del PR y actualiza la referencia del PWM. También gestiona la solicitud de exportación del historial de muestras por UART. 
+
+La aplicación de control cuenta con tres etapas:
+- Inicialización: MicroBlaze V configura los parámetros iniciales de los periféricos y queda a la espera de la interrupción del Timer.
+  
+<p align="center">
+  <img src="./figuras/App_de_control_inicializacion.svg" alt="Diagrama de Software" width="400">
+</p>
+
+- Interrupción periódica: El Timer define un periodo de muestreo en el que en cada instante de muestra se verifica la disponibilidad del dato, se lee el dato y se configura el controlador Proporcional-Resonante para la actualización del PWM.
+- Historial de datos: Al presionar un botón el sistema se encarga de enviar vía UART un historial de muestras previamente almacenadas en un buffer circular.
+
+#### Diagrama
+En la Figura se muestra la arquitectura modular del software en C, con las señales que intercambian los módulos. El módulo main.c coordina los drivers de los periféricos (timer, ADC, PWM, UART y GPIO), el buffer de muestras y el controlador PR, mediante llamadas a sus funciones y el intercambio de datos. El flujo de control lo inicia la interrupción periódica del temporizador, que ejecuta en cada periodo la adquisición, el cálculo del control y la actualización del PWM.
+
+<p align="center">
+  <img src="./figuras/App_de_control_codigo.svg" alt="Diagrama de Software" width="900">
+</p>
+
+Las siguientes entradas y salidas se denotan respecto a `main.c`:
+##### Entradas
+- `Interruption`: interrupción periódica del timer.
+- `btn_pressed`: señal de botón presionado.
+- `init_param`: señales con parámetros iniciales para cada modulo durante la etapa de inicialización. 
+##### Salidas 
+- `current_sample`: muestra de la medición de corriente medida por el ADC/XADC.
+- `start_meas`: señal que indica el inicio de la medición a el ADC cada interrupción de periodo.
+- `current_ref`: referencia de corriente necesaria para el controlador.
+- `start_trans`: indica a la UART el inicio de la transmisión.
+- `sample_hist`: historial de muestras almacenado en el buffer circular.
+- `duty_ref`: señal de corrección para el PWM.
+
+##### Código modular
+En lenguaje C, la programación modular significa que el código se realiza en pequeñas partes reusables. Para esto se dividen en archivos .h (header files), en los cuales se declara interfaz, y los .c (source files), en donde se realiza la implementación. Esta organización favorece la reutilización de una misma interfaz en otras partes del código y la modificación de la implementación sin afectar otras partes del código [1].  
 
 ## Integración del sistema
 La integración conecta el procesador con los periféricos mediante AXI4(-Lite), sincroniza la adquisición de corriente con el PWM y enlaza las señales de actuación con la etapa de potencia. La arquitectura modular permite verificar cada periférico antes de integrar el lazo completo.
@@ -193,5 +226,8 @@ El periférico PWM contará con un testbench autoverificable que permita comprob
 Se verificará especialmente que las señales complementarias respeten el tiempo muerto establecido, que las referencias fuera de rango sean saturadas correctamente y que la señal `pwm_trigger_o` permita sincronizar la adquisición.
 
 Adicionalmente, se realizará una simulación temporizada posterior a la implementación del periférico personalizado.
+
+### Bibliografía
+[1] W3Schools, "C Organize Code," W3Schools. [En línea]. Disponible en: https://www.w3schools.com/c/c_organize_code.php. [Accedido: 03-Nov-2026]
 
 La validación final comprobará que los periféricos se comuniquen correctamente con MicroBlaze V, que las interrupciones mantengan la periodicidad requerida y que la transmisión UART no interfiera con la ejecución del lazo de control.
