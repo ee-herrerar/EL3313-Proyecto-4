@@ -1,8 +1,8 @@
 # Control de corriente en un inversor monofásico mediante un regulador PR discreto sobre MicroBlaze V
 
-# 1. Introducción y objetivos
+## 1. Introducción y objetivos
 
-## 1.1. Introducción
+### 1.1. Introducción
 
 El presente proyecto consiste en el diseño de un sistema digital embebido basado en el procesador MicroBlaze V, implementado sobre una FPGA Artix-7. El sistema tiene como propósito proporcionar una plataforma de procesamiento, adquisición de datos y generación de señales de control para un inversor monofásico en puente H, encargado de regular la corriente de una carga RL mediante un controlador proporcional-resonante (PR) discreto.
 
@@ -12,11 +12,11 @@ La arquitectura propuesta distribuye las funciones entre hardware y software. Lo
 
 El desarrollo de la plataforma digital se realiza en coordinación con el sistema de potencia, responsable de proporcionar las condiciones de operación del inversor y los parámetros del controlador PR. De esta manera, el diseño digital se concentra en la implementación de la lógica de control y las interfaces necesarias para su integración con la etapa de potencia.
 
-## 1.2. Objetivo general
+### 1.2. Objetivo general
 
 Diseñar un sistema digital embebido basado en MicroBlaze V, integrando periféricos mediante interfaces AXI4-Lite y módulos personalizados en SystemVerilog, para implementar la adquisición de corriente, la ejecución periódica de un controlador PR discreto y la generación de señales PWM destinadas al control de un inversor monofásico.
 
-## 1.3. Objetivos específicos
+### 1.3. Objetivos específicos
 
 1. Definir una arquitectura modular basada en MicroBlaze V que integre memoria, periféricos de comunicación, temporización y módulos personalizados mediante interfaces AXI.
 
@@ -53,27 +53,15 @@ Los parámetros de conmutación, muestreo y control deberán definirse y justifi
 
 ### 3.1. Arquitectura general
 
-El sistema se desarrolla sobre una FPGA Artix-7 mediante una arquitectura modular basada en el procesador MicroBlaze V. Este se encarga de ejecutar el software de control en C y administrar los periféricos digitales mediante interfaces AXI4-Lite.
+La arquitectura propuesta se basa en el procesador MicroBlaze V sobre una FPGA Artix-7. El procesador ejecuta el software de control en C y administra los periféricos digitales mediante interfaces AXI4-Lite.
 
-La arquitectura incorpora memoria BRAM para el almacenamiento de instrucciones y datos, un temporizador para generar interrupciones periódicas, una interfaz UART para transmitir información y módulos de adquisición y generación PWM.
+La arquitectura contempla memoria BRAM para el almacenamiento de instrucciones y datos, un temporizador para generar interrupciones periódicas, una interfaz UART para transmitir información y módulos de adquisición y generación PWM.
 
-El funcionamiento general consiste en adquirir una muestra de corriente mediante el ADC/XADC, procesarla utilizando el controlador PR discreto y actualizar el periférico PWM para generar las señales de actuación correspondientes.
+El funcionamiento previsto consiste en adquirir una muestra de corriente mediante el ADC/XADC, procesarla utilizando el controlador PR discreto y actualizar el periférico PWM para generar las señales de actuación correspondientes.
 
 ### 3.2. Módulos del sistema
 
-Los principales componentes de la arquitectura digital y sus funciones se presentan a continuación.
-
-### 3.3. Diagramas del sistema
-
-## Diagramas generales del sistema
-### Nivel 1
-![Diagrama general del sistema, nivel 1](figuras/DN1.svg)
-
-### Nivel 2
-![Diagrama general del sistema, nivel 2](figuras/DN2.svg)
-### Nivel 3
-![Diagrama general del sistema, nivel 3](figuras/DN3.svg)
-
+Los principales componentes previstos de la arquitectura digital y sus funciones se presentan a continuación.
 
 | Módulo | Función |
 |---|---|
@@ -88,25 +76,53 @@ Los principales componentes de la arquitectura digital y sus funciones se presen
 | PWM personalizado | Genera la modulación unipolar con tiempo muerto configurable. |
 | MDM | Permite depurar el sistema embebido. |
 
-Cada módulo se integra a la arquitectura mediante interfaces definidas, permitiendo su desarrollo y verificación individual antes de la integración completa.
+Se propone integrar cada módulo a la arquitectura mediante interfaces definidas, permitiendo su desarrollo y verificación individual antes de la integración completa.
 
-### Flujo de control de corriente
-Este diagrama representa el recorrido de la señal en el lazo de control: se mide la corriente de la etapa de potencia, se convierte y se entrega al MicroBlaze V mediante registros AXI. El procesador calcula la acción de control PR, actualiza la referencia del PWM y este genera las señales para los drivers del puente H.
+### 3.3. Diagramas del sistema
+
+#### 3.3.1. Diagramas generales del sistema
+
+##### 3.3.1.1. Nivel 1
+
+![Diagrama general del sistema, nivel 1](figuras/DN1.svg)
+
+##### 3.3.1.2. Nivel 2
+
+![Diagrama general del sistema, nivel 2](figuras/DN2.svg)
+
+##### 3.3.1.3. Nivel 3
+
+![Diagrama general del sistema, nivel 3](figuras/DN3.svg)
+
+#### 3.3.2. Flujo de control de corriente
+
+El diagrama resume el ciclo periódico descrito para la aplicación: después de la inicialización, el temporizador activa la adquisición y el cálculo PR; la referencia calculada se escribe en el PWM, la corriente se realimenta desde la etapa de potencia y cada muestra se almacena. También se muestra la exportación del historial por UART ante un evento de botón.
 
 ```mermaid
 flowchart TD
-    A["Etapa de potencia"] --> B["Sensor de corriente"]
-    B --> C["ADC / adquisición"]
-    C --> D["Registros AXI de medición"]
-    D --> E["MicroBlaze V\nControlador PR en C"]
-    E --> F["Registros AXI de referencia"]
-    F --> G["PWM en SystemVerilog"]
-    G --> H["Salidas de control hacia drivers"]
-    H --> A
+    I["Inicializar periféricos y parámetros<br/>Timer, PWM, ADC/XADC, UART y GPIO"] --> W["Esperar interrupción periódica del Timer"]
+    W --> T["Interrupción del Timer"]
+    T --> A["Iniciar o capturar conversión ADC"]
+    A --> M["Validar disponibilidad y leer muestra de corriente"]
+    M --> C["Calcular control PR<br/>con la referencia de corriente"]
+    C --> R["Escribir duty ref en registros del PWM"]
+    R --> P["Generar PWM unipolar<br/>con tiempo muerto"]
+    P --> D["Señales hacia drivers del puente H"]
+    D --> H["Etapa de potencia e inversor"]
+    H --> S["Medir corriente de carga"]
+    S --> X["ADC/XADC"]
+    X --> W
+    M --> B["Guardar muestra en buffer circular"]
+    B --> W
+    W -. "Evento de botón" .-> E["Recorrer muestras almacenadas"]
+    E --> U["Transmitir por UART a la PC"]
+    U --> W
+    P -.->|pwm_trigger para sincronización| A
 ```
 
-### Arquitectura general del sistema digital
-Este diagrama muestra los bloques principales del sistema y su comunicación: el MicroBlaze V usa la BRAM para programa y datos, accede al temporizador y al PWM por AXI4-Lite, y se comunica con la computadora mediante UART. El temporizador genera la interrupción que permite ejecutar periódicamente el control.
+#### 3.3.3. Arquitectura general del sistema digital
+
+El diagrama muestra los bloques principales y sus comunicaciones: MicroBlaze V accede a BRAM, Timer y PWM; la UART enlaza el sistema con la computadora, y la interrupción del Timer pasa por el controlador de interrupciones para iniciar periódicamente el control.
 
 ```mermaid
 flowchart TD
@@ -122,13 +138,14 @@ flowchart TD
     UART <-->|AXI4-Lite| CPU
     CPU <-->|ILMB / DLMB| BRAM
     CPU <-->|AXI4-Lite| TIMER
-    TIMER -->|Interrupt| INTC
-    INTC -->|Interrupt| CPU
+    TIMER -->|Interrupción| INTC
+    INTC -->|Interrupción| CPU
     CPU <-->|AXI4-Lite| PWM
 ```
 
-#### Interconexión y temporización del AXI Timer
-Este diagrama detalla cómo el MicroBlaze V se comunica con el temporizador y la UART a través de AXI SmartConnect. La interrupción del temporizador se dirige al controlador de interrupciones y luego al procesador para marcar la ejecución periódica.
+#### 3.3.4. Interconexión y temporización del AXI Timer
+
+El diagrama detalla la conexión del MicroBlaze V con el Timer y la UART a través de AXI SmartConnect, y el trayecto de la interrupción periódica desde el Timer hasta el procesador.
 
 ```mermaid
 flowchart TD
@@ -144,14 +161,17 @@ flowchart TD
     AXI --> UART
     UART <-->|USB-UART| PC
     TIMER -->|Interrupción periódica| INT
-    INT -->|Interrupt| MB
+    INT -->|Interrupción| MB
 ```
 
-## Diseño de software
-La aplicación embebida en C ejecuta el lazo de control mediante interrupciones periódicas: adquiere la corriente, calcula la acción del PR y actualiza la referencia del PWM. También gestiona la solicitud de exportación del historial de muestras por UART.
+## 4. Diseño de software
 
-## Integración del sistema
-La integración conecta el procesador con los periféricos mediante AXI4(-Lite), sincroniza la adquisición de corriente con el PWM y enlaza las señales de actuación con la etapa de potencia. La arquitectura modular permite verificar cada periférico antes de integrar el lazo completo.
+La aplicación embebida prevista en C ejecuta el lazo de control mediante interrupciones periódicas: adquiere la corriente, calcula la acción del PR y actualiza la referencia del PWM. También gestiona la solicitud de exportación del historial de muestras por UART.
+
+## 5. Integración del sistema
+
+La integración prevista conecta el procesador con los periféricos mediante AXI4(-Lite), sincroniza la adquisición de corriente con el PWM y enlaza las señales de actuación con la etapa de potencia. La arquitectura modular permite verificar cada periférico antes de integrar el lazo completo.
+
 ## 6. Estrategia de implementación y validación
 
 ### 6.1. Metodología de implementación
