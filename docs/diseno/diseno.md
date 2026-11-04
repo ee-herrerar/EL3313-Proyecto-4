@@ -152,20 +152,26 @@ La aplicación embebida en C ejecuta el lazo de control mediante interrupciones 
 
 La aplicación de control cuenta con tres etapas:
 - Inicialización: MicroBlaze V configura los parámetros iniciales de los periféricos y queda a la espera de la interrupción del Timer.
-![Diagrama de Software inicial](./figuras/App_de_control_inicializacion.svg)
+  
+<p align="center">
+  <img src="./figuras/App_de_control_inicializacion.svg" alt="Diagrama de Software" width="400">
+</p>
+
 - Interrupción periódica: El Timer define un periodo de muestreo en el que en cada instante de muestra se verifica la disponibilidad del dato, se lee el dato y se configura el controlador Proporcional-Resonante para la actualización del PWM.
 - Historial de datos: Al presionar un botón el sistema se encarga de enviar vía UART un historial de muestras previamente almacenadas en un buffer circular.
 
 #### Diagrama
 En la Figura se muestra la arquitectura modular del software en C, con las señales que intercambian los módulos. El módulo main.c coordina los drivers de los periféricos (timer, ADC, PWM, UART y GPIO), el buffer de muestras y el controlador PR, mediante llamadas a sus funciones y el intercambio de datos. El flujo de control lo inicia la interrupción periódica del temporizador, que ejecuta en cada periodo la adquisición, el cálculo del control y la actualización del PWM.
 
-![Diagrama de Software](./figuras/App_de_control_codigo.svg)
+<p align="center">
+  <img src="./figuras/App_de_control_codigo.svg" alt="Diagrama de Software" width="900">
+</p>
 
 Las siguientes entradas y salidas se denotan respecto a `main.c`:
 ##### Entradas
 - `Interruption`: interrupción periódica del timer.
 - `btn_pressed`: señal de botón presionado.
-- `init`: señales con parámetros iniciales para cada modulo durante la etapa de inicialización. 
+- `init_param`: señales con parámetros iniciales para cada modulo durante la etapa de inicialización. 
 ##### Salidas 
 - `current_sample`: muestra de la medición de corriente medida por el ADC/XADC.
 - `start_meas`: señal que indica el inicio de la medición a el ADC cada interrupción de periodo.
