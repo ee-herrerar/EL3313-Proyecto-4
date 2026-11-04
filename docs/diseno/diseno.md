@@ -64,8 +64,6 @@ El funcionamiento general consiste en adquirir una muestra de corriente mediante
 Los principales componentes de la arquitectura digital y sus funciones se presentan a continuación.
 
 ### 3.3. Diagramas del sistema
-
-## Diagramas generales del sistema
 ### Nivel 1
 ![Diagrama general del sistema, nivel 1](figuras/DN1.svg)
 
