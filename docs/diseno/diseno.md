@@ -125,25 +125,6 @@ flowchart TD
     CPU <-->|AXI4-Lite| PWM
 ```
 
-#### Interconexión y temporización del AXI Timer
-Este diagrama detalla cómo el MicroBlaze V se comunica con el temporizador y la UART a través de AXI SmartConnect. La interrupción del temporizador se dirige al controlador de interrupciones y luego al procesador para marcar la ejecución periódica.
-
-```mermaid
-flowchart TD
-    MB["MicroBlaze V"]
-    AXI["AXI SmartConnect"]
-    TIMER["AXI Timer"]
-    UART["AXI UART Lite"]
-    PC["PC / Terminal serial"]
-    INT["AXI Interrupt Controller"]
-
-    MB -->|M_AXI_DP| AXI
-    AXI --> TIMER
-    AXI --> UART
-    UART <-->|USB-UART| PC
-    TIMER -->|Interrupción periódica| INT
-    INT -->|Interrupt| MB
-```
 
 ## 4. Interfaces y comunicación
 
@@ -231,6 +212,26 @@ La comunicación AXI4-Lite permite que MicroBlaze V configure y supervise los pe
 Por otra parte, las señales de sincronización e interrupción realizan funciones independientes del bus AXI. El temporizador genera una interrupción periódica que se comunica al procesador mediante el controlador de interrupciones, mientras que `pwm_trigger_o` permite coordinar el inicio de la adquisición ADC/XADC con la generación PWM.
 
 De esta manera, la arquitectura combina la comunicación por registros con señales de sincronización dedicadas, permitiendo coordinar las operaciones de adquisición, procesamiento y generación de señales.
+
+#### Interconexión y temporización del AXI Timer
+Este diagrama detalla cómo el MicroBlaze V se comunica con el temporizador y la UART a través de AXI SmartConnect. La interrupción del temporizador se dirige al controlador de interrupciones y luego al procesador para marcar la ejecución periódica.
+
+```mermaid
+flowchart TD
+    MB["MicroBlaze V"]
+    AXI["AXI SmartConnect"]
+    TIMER["AXI Timer"]
+    UART["AXI UART Lite"]
+    PC["PC / Terminal serial"]
+    INT["AXI Interrupt Controller"]
+
+    MB -->|M_AXI_DP| AXI
+    AXI --> TIMER
+    AXI --> UART
+    UART <-->|USB-UART| PC
+    TIMER -->|Interrupción periódica| INT
+    INT -->|Interrupt| MB
+```
 
 ## Diseño de software
 La aplicación embebida en C ejecuta el lazo de control mediante interrupciones periódicas: adquiere la corriente, calcula la acción del PR y actualiza la referencia del PWM. También gestiona la solicitud de exportación del historial de muestras por UART. 
