@@ -146,6 +146,11 @@ flowchart TD
 ```
 
 #### 3.3.4. Diagrama interno del PWM personalizado
+A continuacion se desarrolla el diagrama de 4 nivel para este modulo:
+
+a) Nombre del modulo: PWM unipolar con AXI4-Lite
+
+b) Diagrama modular
 
 El diagrama resume la implementación RTL: los registros AXI configuran la frecuencia, la referencia y el tiempo muerto; la portadora triangular y las comparaciones producen las órdenes de conmutación de las dos ramas, que pasan por la lógica de tiempo muerto. La señal `pwm_trigger_o` se genera en la mitad del período, y la habilitación y la falla controlan las salidas.
 
@@ -170,12 +175,8 @@ flowchart LR
     EN --> GA
     EN --> GB
 ```
-A continuacion se desarrolla el diagrama de 4 nivel para este modulo:
-a) Nombre del modulo: PWM unipolar con AXI4-Lite
-
-b) Diagrama modular.
-<img width="2400" height="1022" alt="diagrama_nivel3_pwm" src="https://github.com/user-attachments/assets/c4717f55-1da5-41c8-a0dc-402d01c93c4f" />
 Diagrama tercer nivel
+
 
 c) Objetivo del modulo.
 Es el actuador digital del lazo de control. Convierte el resultado del controlador PR, que el MicroBlaze V calcula en software, en las señales de compuerta que accionan el puente H del inversor. Así la corriente de la carga RL sigue la referencia sinusoidal de 50 Hz.
@@ -196,19 +197,40 @@ d) Entradas.
 | s_axi_wdata | Dato de escritura |
 | s_axi_wstrb | Habilitación por byte del dato de escritura. |
 | s_axi_wvalid | Dato de escritura válido. |
-| s_axi_bready |. |
-| s_axi_araddr | . |
-| s_axi_arprot | l. |
-| s_axi_arvalid | |
-| s_axi_rready| . |
-| fault_i | . |
+| s_axi_bready |	El master acepta la respuesta de escritura. |
+| s_axi_araddr | Dirección de lectura (offset en bytes). |
+| s_axi_arprot | 	Atributos AXI. Se ignoran. |
+| s_axi_arvalid | 	Dirección de lectura válida. |
+| s_axi_rready| 	El master acepta el dato de lectura. |
+| fault_i | alla externa (sobrecorriente), activa en alto. |
 
 e) Salidas.
-e) Salidas.
-e) Salidas.
-f) Explicaci´on de la relaci´on con otros m´odulos.
-g) Explicaci´on de funcionamiento.
-h) Dise˜no. ¿C´omo se dise˜na? Justificaci´on, tablas de verdad, implificaciones, uso de m´odulos integrados, etc.
+| Señal | Descripción |
+|---|---|
+| s_axi_awready| El esclavo acepta la dirección de escritura. |
+| s_axi_wready | 	El esclavo acepta el dato de escritura.|
+| s_axi_bresp | 	Respuesta de escritura: 00 OKAY, 10 SLVERR. |
+| s_axi_bvalid | 	Respuesta de escritura válida. |
+| s_axi_arready |	El esclavo acepta la dirección de lectura. |
+| s_axi_rdata |	Dato de lectura.|
+| s_axi_rresp| Respuesta de lectura: 00 OKAY, 10 SLVERR. |
+| s_axi_rvalid |	Dato de lectura válido. |
+| gate_ah_o |	Compuerta del transistor superior de la rama A. |
+| gate_al_o | 	Compuerta del transistor inferior de la rama A. |
+| gate_bh_o| 	Compuerta del transistor superior de la rama B. |
+| gate_bl_o | 	Compuerta del transistor inferior de la rama B. |
+| pwm_trigger_o| 	Pulso de 1 reloj, una vez por período, hacia el ADC. |
+
+
+f) Explicacion de la relacion con otros modulos.
+
+| Modulo | Señales | Relacion |
+|---|---|---|
+|MicroBlaze V, por AXI SmartConnect| s_axi_* |  El software configura enable, freq_sel, deadtime y escribe duty_ref en cada período de control. También lee running y el estado de falla. La dirección base la asigna el Address Editor de Vivado.|
+| AXI Timer | ninguna | Sin conexión eléctrica. La relación es por software: el período del Timer debe coincidir con el período del PWM (period_for(freq_sel) relojes). |
+| AXI UART Lite | ninguna |El PWM no genera interrupciones. El software puede reflejar la falla en un LED vía GPIO leyendo el registro STATUS. |
+| XADC| pwm_trigger_o → convst_in |	Un pulso por período de conmutación, en el pico de la portadora. Alinea la conversión con el centro del período. |
+
 
 
 ## 4. Interfaces y comunicación
