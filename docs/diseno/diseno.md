@@ -90,14 +90,6 @@ Los principales componentes de la arquitectura digital y sus funciones se presen
 
 Cada módulo se integra a la arquitectura mediante interfaces definidas, permitiendo su desarrollo y verificación individual antes de la integración completa.
 
-## Fases y Módulos de la Etapa Digital
-El desarrollo se plantea de forma incremental:
-1. **Sistema base:** configurar el proyecto Vivado y MicroBlaze V, y comprobar la ejecución de un programa de prueba desde Vitis.
-2. **Periféricos:** configurar las IP disponibles e implementar y probar el periférico PWM personalizado.
-3. **Integración con MicroBlaze V:** incorporar los periféricos al Block Design, definir el mapa de memoria y comprobar su comunicación desde C.
-4. **Software de control:** coordinar la adquisición, la ejecución periódica del control PR, la actualización del PWM y el envío de muestras por UART.
-5. **Validación y optimización:** probar los módulos y el sistema integrado con la etapa de potencia, verificando el comportamiento temporal y funcional.
-
 ### Flujo de control de corriente
 Este diagrama representa el recorrido de la señal en el lazo de control: se mide la corriente de la etapa de potencia, se convierte y se entrega al MicroBlaze V mediante registros AXI. El procesador calcula la acción de control PR, actualiza la referencia del PWM y este genera las señales para los drivers del puente H.
 
@@ -160,6 +152,46 @@ La aplicación embebida en C ejecuta el lazo de control mediante interrupciones 
 
 ## Integración del sistema
 La integración conecta el procesador con los periféricos mediante AXI4(-Lite), sincroniza la adquisición de corriente con el PWM y enlaza las señales de actuación con la etapa de potencia. La arquitectura modular permite verificar cada periférico antes de integrar el lazo completo.
+## 6. Estrategia de implementación y validación
 
-## Verificación y validación
-La validación contempla pruebas funcionales del PWM y sus registros, comprobación de la adquisición y exportación de muestras, medición del período y jitter del lazo, y ensayos integrados de seguimiento de corriente con la carga RL.
+### 6.1. Metodología de implementación
+
+El desarrollo del sistema se realizará mediante una metodología incremental, permitiendo verificar el funcionamiento de cada módulo antes de integrarlo con los demás componentes.
+
+Se establecen las siguientes fases:
+
+1. **Configuración del sistema base:** implementación del procesador MicroBlaze V, memoria, reloj e interfaces de comunicación en Vivado, verificando su funcionamiento mediante un programa de prueba en Vitis.
+
+2. **Desarrollo de periféricos:** configuración de los módulos AXI Timer, UART y GPIO, además del diseño del controlador PWM personalizado en SystemVerilog y la interfaz ADC/XADC.
+
+3. **Integración de hardware:** conexión de los periféricos mediante AXI4-Lite, asignación de direcciones y verificación de las operaciones de lectura y escritura.
+
+4. **Desarrollo del software:** implementación en C de las interrupciones periódicas, adquisición de corriente, ejecución del controlador PR, actualización del PWM y almacenamiento y transmisión de muestras.
+
+5. **Validación del sistema:** ejecución de simulaciones y pruebas funcionales para verificar la comunicación entre módulos, la temporización y el funcionamiento integrado.
+
+### 6.2. Estrategia de verificación
+
+La verificación del sistema se realizará mediante simulaciones en Vivado, testbenches autoverificables y pruebas funcionales sobre la FPGA.
+
+Se contemplan las siguientes pruebas:
+
+| Módulo | Prueba de verificación |
+|---|---|
+| MicroBlaze V | Comprobar la ejecución de software y la comunicación con los periféricos. |
+| PWM personalizado | Verificar las tres frecuencias de conmutación, modulación unipolar, tiempo muerto y habilitación. |
+| Interfaz AXI4-Lite | Comprobar la lectura y escritura de registros, estados y saturación de referencias. |
+| ADC/XADC | Verificar la adquisición de muestras y su sincronización con el PWM. |
+| AXI Timer | Comprobar la generación periódica de interrupciones y medir el período efectivo y su jitter. |
+| UART y GPIO | Verificar la transmisión de muestras almacenadas al presionar un botón. |
+| Sistema integrado | Comprobar la ejecución coordinada de adquisición, procesamiento y actualización del PWM. |
+
+### 6.3. Criterios de validación
+
+El periférico PWM contará con un testbench autoverificable que permita comprobar automáticamente las condiciones de funcionamiento y reportar los resultados de cada prueba.
+
+Se verificará especialmente que las señales complementarias respeten el tiempo muerto establecido, que las referencias fuera de rango sean saturadas correctamente y que la señal `pwm_trigger_o` permita sincronizar la adquisición.
+
+Adicionalmente, se realizará una simulación temporizada posterior a la implementación del periférico personalizado.
+
+La validación final comprobará que los periféricos se comuniquen correctamente con MicroBlaze V, que las interrupciones mantengan la periodicidad requerida y que la transmisión UART no interfiera con la ejecución del lazo de control.
