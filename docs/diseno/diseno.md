@@ -312,7 +312,24 @@ Se verificará especialmente que las señales complementarias respeten el tiempo
 
 Adicionalmente, se realizará una simulación temporizada posterior a la implementación del periférico personalizado.
 
-### Bibliografía
-[1] W3Schools, "C Organize Code," W3Schools. [En línea]. Disponible en: https://www.w3schools.com/c/c_organize_code.php. [Accedido: 03-Nov-2026]
-
 La validación final comprobará que los periféricos se comuniquen correctamente con MicroBlaze V, que las interrupciones mantengan la periodicidad requerida y que la transmisión UART no interfiera con la ejecución del lazo de control.
+
+## 7. Referencias bibliográficas
+
+[1] W3Schools, “C Organize Code,” *W3Schools*. [En línea]. Disponible en: https://www.w3schools.com/c/c_organize_code.php. [Consultado: 03-nov-2026].
+
+[2] AMD, “MicroBlaze V Processor Overview.” [En línea]. Disponible en: https://www.amd.com/en/products/software/adaptive-socs-and-fpgas/microblaze-v.html.
+
+[3] AMD, *MicroBlaze V Embedded Design Tutorial*, UG1711. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug1711-microblaze-v-embedded-design.
+
+[4] AMD, *MicroBlaze Processor Reference Guide*, UG984. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug984-vivado-microblaze-ref.
+
+[5] AMD, *Vivado Design Suite User Guide: Creating and Packaging Custom IP*, UG1118. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug1118-vivado-creating-packaging-custom-ip.
+
+[6] AMD, *AXI Reference Guide*, UG1037. [En línea]. Disponible en: https://docs.amd.com/v/u/en-US/ug1037-vivado-axi-reference-guide.
+
+[7] AMD, *Vitis Unified Software Platform Documentation*, UG1416. [En línea]. Disponible en: https://docs.amd.com/v/u/en-US/ug1416-vitis-documentation.
+
+[8] AMD, *MicroBlaze V Processor Reference Guide*, UG1629, versión 2026.1, 2026. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug1629-microblaze-v-user-guide/.
+
+[9] AMD, *7 Series FPGAs and Zynq-7000 SoC XADC Dual 12-Bit 1 MSPS Analog-to-Digital Converter User Guide*, UG480, revisión 1.11, 2022. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug480_7Series_XADC.
