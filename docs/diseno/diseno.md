@@ -1,8 +1,8 @@
 # Control de corriente en un inversor monofásico mediante un regulador PR discreto sobre MicroBlaze V
 
-# 1. Introducción y objetivos
+## 1. Introducción y objetivos
 
-## 1.1. Introducción
+### 1.1. Introducción
 
 El presente proyecto consiste en el diseño de un sistema digital embebido basado en el procesador MicroBlaze V, implementado sobre una FPGA Artix-7. El sistema tiene como propósito proporcionar una plataforma de procesamiento, adquisición de datos y generación de señales de control para un inversor monofásico en puente H, encargado de regular la corriente de una carga RL mediante un controlador proporcional-resonante (PR) discreto.
 
@@ -12,11 +12,11 @@ La arquitectura propuesta distribuye las funciones entre hardware y software. Lo
 
 El desarrollo de la plataforma digital se realiza en coordinación con el sistema de potencia, responsable de proporcionar las condiciones de operación del inversor y los parámetros del controlador PR. De esta manera, el diseño digital se concentra en la implementación de la lógica de control y las interfaces necesarias para su integración con la etapa de potencia.
 
-## 1.2. Objetivo general
+### 1.2. Objetivo general
 
 Diseñar un sistema digital embebido basado en MicroBlaze V, integrando periféricos mediante interfaces AXI4-Lite y módulos personalizados en SystemVerilog, para implementar la adquisición de corriente, la ejecución periódica de un controlador PR discreto y la generación de señales PWM destinadas al control de un inversor monofásico.
 
-## 1.3. Objetivos específicos
+### 1.3. Objetivos específicos
 
 1. Definir una arquitectura modular basada en MicroBlaze V que integre memoria, periféricos de comunicación, temporización y módulos personalizados mediante interfaces AXI.
 
@@ -65,8 +65,7 @@ Los principales componentes de la arquitectura digital y sus funciones se presen
 
 ### 3.3. Diagramas del sistema
 
-
-### Flujo de control de corriente
+#### Flujo de control de corriente
 Este diagrama representa el recorrido de la señal en el lazo de control: se mide la corriente de la etapa de potencia, se convierte y se entrega al MicroBlaze V mediante registros AXI. El procesador calcula la acción de control PR, actualiza la referencia del PWM y este genera las señales para los drivers del puente H.
 
 ```mermaid
@@ -81,7 +80,7 @@ flowchart TD
     H --> A
 ```
 
-### Arquitectura general del sistema digital
+#### Arquitectura general del sistema digital
 Este diagrama muestra los bloques principales del sistema y su comunicación: el MicroBlaze V usa la BRAM para programa y datos, accede al temporizador y al PWM por AXI4-Lite, y se comunica con la computadora mediante UART. El temporizador genera la interrupción que permite ejecutar periódicamente el control.
 
 ```mermaid
@@ -273,6 +272,7 @@ En lenguaje C, la programación modular significa que el código se realiza en p
 
 ## Integración del sistema
 La integración conecta el procesador con los periféricos mediante AXI4(-Lite), sincroniza la adquisición de corriente con el PWM y enlaza las señales de actuación con la etapa de potencia. La arquitectura modular permite verificar cada periférico antes de integrar el lazo completo.
+
 ## 6. Estrategia de implementación y validación
 
 ### 6.1. Metodología de implementación
