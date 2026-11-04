@@ -145,6 +145,93 @@ flowchart TD
     INT -->|Interrupt| MB
 ```
 
+## 4. Interfaces y comunicación
+
+### 4.1. Comunicación mediante AXI4-Lite
+
+La comunicación entre el procesador MicroBlaze V y los periféricos se realiza mediante el protocolo AXI4-Lite, que permite acceder a registros de control y estado utilizando direcciones de memoria.
+
+El procesador actúa como maestro AXI y se comunica con los periféricos a través de un módulo de interconexión AXI SmartConnect. Este mecanismo permite configurar el PWM, consultar las mediciones del ADC/XADC y acceder a los módulos Timer, UART y GPIO.
+
+AXI4-Lite utiliza cinco canales de comunicación:
+
+| Canal | Función |
+|---|---|
+| AW | Dirección de escritura |
+| W | Datos de escritura |
+| B | Respuesta de escritura |
+| AR | Dirección de lectura |
+| R | Datos y respuesta de lectura |
+
+Cada periférico dispone de una dirección base asignada desde el Address Editor de Vivado, mientras que sus registros internos se identifican mediante desplazamientos u *offsets*.
+
+### 4.2. Mapa de memoria
+
+Los periféricos se encuentran mapeados en el espacio de direcciones del procesador. Las direcciones identificadas en el diseño base son las siguientes:
+
+| Módulo | Dirección base | Función |
+|---|---|---|
+| Memoria BRAM local | `0x00000000` | Almacenamiento de instrucciones y datos |
+| AXI UART Lite | `0x40600000` | Comunicación serial |
+| AXI Interrupt Controller | `0x41200000` | Gestión de interrupciones |
+| AXI Timer | `0x41C00000` | Temporización periódica |
+| PWM personalizado | Por asignar | Control de modulación |
+| ADC/XADC | Por asignar | Lectura de muestras |
+| AXI GPIO | Por asignar | Botones e indicadores |
+
+Las direcciones de los módulos pendientes se establecerán durante su incorporación al Block Design. El mapa definitivo deberá coincidir con la configuración utilizada en Vivado.
+
+### 4.3. Registros del periférico PWM
+
+El controlador PWM personalizado utiliza una interfaz AXI4-Lite para recibir los parámetros de operación desde MicroBlaze V.
+
+El instructivo propone dos registros principales:
+
+**Registro de Control/Estado — Offset `0x00`**
+
+| Bits | Campo | Acceso | Función |
+|---|---|---|---|
+| `[0]` | `enable` | R/W | Habilita o deshabilita el PWM. |
+| `[2:1]` | `freq_sel` | R/W | Selecciona una de al menos tres frecuencias de conmutación. |
+| `[3]` | `running` | RO | Indica si el generador PWM está activo. |
+| `[31:4]` | Reservado | — | Sin función asignada. |
+
+**Registro de Duty/Referencia — Offset `0x04`**
+
+| Bits | Campo | Acceso | Función |
+|---|---|---|---|
+| `[15:0]` | `duty_ref` | R/W | Establece la referencia de modulación. |
+| `[31:16]` | Reservado | — | Sin función asignada. |
+
+El periférico deberá limitar automáticamente los valores de `duty_ref` que excedan el rango permitido, evitando referencias de modulación inválidas.
+
+Adicionalmente, se propone utilizar un registro de configuración en el offset `0x08` para establecer el tiempo muerto. Su definición final dependerá de la implementación del PWM.
+
+### 4.4. Señales de los periféricos
+
+Además de los registros AXI4-Lite, los módulos intercambian señales necesarias para coordinar su funcionamiento.
+
+| Módulo | Señales o interfaces principales | Función |
+|---|---|---|
+| MicroBlaze V | `M_AXI_DP`, interrupción | Acceso a periféricos y atención de eventos |
+| PWM | `enable`, `freq_sel`, `duty_ref` | Configuración de la modulación |
+| PWM | `pwm_ah_o`, `pwm_al_o`, `pwm_bh_o`, `pwm_bl_o` | Señales de conmutación del puente H |
+| PWM | `pwm_trigger_o` | Sincronización de la adquisición |
+| ADC/XADC | Inicio de conversión, dato disponible y muestra digital | Adquisición de corriente |
+| AXI Timer | `interrupt` | Solicitud periódica de interrupción |
+| UART | `TX`, `RX` | Comunicación serial con la computadora |
+| GPIO | Entradas de botones y salidas LED | Interacción con el usuario |
+
+Los nombres específicos de las señales de la interfaz ADC/XADC se establecerán según la IP utilizada y su integración con MicroBlaze V.
+
+### 4.5. Interconexión y sincronización
+
+La comunicación AXI4-Lite permite que MicroBlaze V configure y supervise los periféricos mediante operaciones de lectura y escritura.
+
+Por otra parte, las señales de sincronización e interrupción realizan funciones independientes del bus AXI. El temporizador genera una interrupción periódica que se comunica al procesador mediante el controlador de interrupciones, mientras que `pwm_trigger_o` permite coordinar el inicio de la adquisición ADC/XADC con la generación PWM.
+
+De esta manera, la arquitectura combina la comunicación por registros con señales de sincronización dedicadas, permitiendo coordinar las operaciones de adquisición, procesamiento y generación de señales.
+
 ## Diseño de software
 La aplicación embebida en C ejecuta el lazo de control mediante interrupciones periódicas: adquiere la corriente, calcula la acción del PR y actualiza la referencia del PWM. También gestiona la solicitud de exportación del historial de muestras por UART. 
 
