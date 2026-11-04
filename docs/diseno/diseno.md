@@ -64,29 +64,7 @@ El funcionamiento general consiste en adquirir una muestra de corriente mediante
 Los principales componentes de la arquitectura digital y sus funciones se presentan a continuación.
 
 ### 3.3. Diagramas del sistema
-### Nivel 1
-![Diagrama general del sistema, nivel 1](figuras/DN1.svg)
 
-### Nivel 2
-![Diagrama general del sistema, nivel 2](figuras/DN2.svg)
-### Nivel 3
-![Diagrama general del sistema, nivel 3](figuras/DN3.svg)
-
-
-| Módulo | Función |
-|---|---|
-| MicroBlaze V | Ejecuta el programa de control y administra los periféricos. |
-| Memoria BRAM y caché | Almacenan instrucciones y datos y permiten optimizar el acceso a instrucciones. |
-| AXI SmartConnect | Interconecta el procesador con los periféricos mediante AXI. |
-| AXI Timer | Genera la base temporal del control periódico. |
-| AXI Interrupt Controller | Gestiona las interrupciones dirigidas al procesador. |
-| AXI UART Lite | Permite transmitir las muestras almacenadas hacia una computadora. |
-| AXI GPIO | Gestiona los botones y los indicadores de estado. |
-| ADC/XADC | Adquiere las mediciones de corriente. |
-| PWM personalizado | Genera la modulación unipolar con tiempo muerto configurable. |
-| MDM | Permite depurar el sistema embebido. |
-
-Cada módulo se integra a la arquitectura mediante interfaces definidas, permitiendo su desarrollo y verificación individual antes de la integración completa.
 
 ### Flujo de control de corriente
 Este diagrama representa el recorrido de la señal en el lazo de control: se mide la corriente de la etapa de potencia, se convierte y se entrega al MicroBlaze V mediante registros AXI. El procesador calcula la acción de control PR, actualiza la referencia del PWM y este genera las señales para los drivers del puente H.
@@ -125,6 +103,30 @@ flowchart TD
     CPU <-->|AXI4-Lite| PWM
 ```
 
+
+### Nivel 1
+![Diagrama general del sistema, nivel 1](figuras/DN1.svg)
+
+### Nivel 2
+![Diagrama general del sistema, nivel 2](figuras/DN2.svg)
+### Nivel 3
+![Diagrama general del sistema, nivel 3](figuras/DN3.svg)
+
+
+| Módulo | Función |
+|---|---|
+| MicroBlaze V | Ejecuta el programa de control y administra los periféricos. |
+| Memoria BRAM y caché | Almacenan instrucciones y datos y permiten optimizar el acceso a instrucciones. |
+| AXI SmartConnect | Interconecta el procesador con los periféricos mediante AXI. |
+| AXI Timer | Genera la base temporal del control periódico. |
+| AXI Interrupt Controller | Gestiona las interrupciones dirigidas al procesador. |
+| AXI UART Lite | Permite transmitir las muestras almacenadas hacia una computadora. |
+| AXI GPIO | Gestiona los botones y los indicadores de estado. |
+| ADC/XADC | Adquiere las mediciones de corriente. |
+| PWM personalizado | Genera la modulación unipolar con tiempo muerto configurable. |
+| MDM | Permite depurar el sistema embebido. |
+
+Cada módulo se integra a la arquitectura mediante interfaces definidas, permitiendo su desarrollo y verificación individual antes de la integración completa.
 
 ## 4. Interfaces y comunicación
 
