@@ -170,6 +170,46 @@ flowchart LR
     EN --> GA
     EN --> GB
 ```
+A continuacion se desarrolla el diagrama de 4 nivel para este modulo:
+a) Nombre del modulo: PWM unipolar con AXI4-Lite
+
+b) Diagrama modular.
+<img width="2400" height="1022" alt="diagrama_nivel3_pwm" src="https://github.com/user-attachments/assets/c4717f55-1da5-41c8-a0dc-402d01c93c4f" />
+Diagrama tercer nivel
+
+c) Objetivo del modulo.
+Es el actuador digital del lazo de control. Convierte el resultado del controlador PR, que el MicroBlaze V calcula en software, en las señales de compuerta que accionan el puente H del inversor. Así la corriente de la carga RL sigue la referencia sinusoidal de 50 Hz.
+Recibe duty_ref por AXI4-Lite. El software lo escribe una vez por período de control. Representa la tensión que el PR pide aplicar, normalizada entre −1 y 1.
+Genera la modulación PWM unipolar. La tensión promedio sobre la carga resulta Vdc · duty_ref, con rizado al doble de la frecuencia de conmutación.
+Inserta el tiempo muerto. Así los dos transistores de una misma rama nunca conducen a la vez, lo que evitaría un cortocircuito de la fuente.
+Sincroniza la medición. Emite pwm_trigger_o una vez por período, en el centro, para que el XADC muestree la corriente en un instante limpio.
+Protege el puente. Apaga las cuatro compuertas de inmediato ante fault_i o al deshabilitarse, y expone running para monitoreo.
+
+d) Entradas.
+| Señal | Descripción |
+|---|---|
+| aclk | Reloj del sistema, 100 MHz. |
+| aresetn | Reset síncrono, activo en bajo. |
+| s_axi_awaddr | 	Dirección de escritura (offset en bytes). |
+| s_axi_awprot | 	Atributos AXI. Se ignoran. |
+| s_axi_awvalid | Dirección de escritura válida. |
+| s_axi_wdata | Dato de escritura |
+| s_axi_wstrb | Habilitación por byte del dato de escritura. |
+| s_axi_wvalid | Dato de escritura válido. |
+| s_axi_bready |. |
+| s_axi_araddr | . |
+| s_axi_arprot | l. |
+| s_axi_arvalid | |
+| s_axi_rready| . |
+| fault_i | . |
+
+e) Salidas.
+e) Salidas.
+e) Salidas.
+f) Explicaci´on de la relaci´on con otros m´odulos.
+g) Explicaci´on de funcionamiento.
+h) Dise˜no. ¿C´omo se dise˜na? Justificaci´on, tablas de verdad, implificaciones, uso de m´odulos integrados, etc.
+
 
 ## 4. Interfaces y comunicación
 
