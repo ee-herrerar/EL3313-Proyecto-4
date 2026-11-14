@@ -5,12 +5,15 @@
 #include "xtmrctr_l.h"
 #include "xil_types.h"
 #include "xil_assert.h"
+#include "xinterrupt_wrap.h"
 
 static XTmrCtr Timer;
+static volatile u32 contador_interrupciones = 0;
 
 // Prototipos de funciones
 void inicializar_sistema(void);
 int inicializar_timer(void);
+void atender_timer(void *referencia, u8 numero);
 
 int main(void)
 {
@@ -18,12 +21,34 @@ int main(void)
 
     inicializar_sistema(); //Llamar inicializar sistema
 
+    u32 ultimo = 0;
+
     while (1)
     {
+        u32 actual = contador_interrupciones;
+
+        if ((actual - ultimo) >= 1000U)
+        {
+            ultimo = actual;
+
+            xil_printf(
+                "Interrupciones: %u\r\n",
+                (unsigned int)actual
+            );
+        }
     }
 
     return 0;
 }
+
+void atender_timer(void *referencia, u8 numero)
+{
+    (void)referencia;
+    (void)numero;
+
+    contador_interrupciones++;
+}
+
 
 void inicializar_sistema(void) //Iniciar todo el sistema
 {
@@ -48,11 +73,30 @@ int inicializar_timer(void) //Iniciar timer
     {
         return estado;
     }
+
+    estado = XSetupInterruptSystem(
+        &Timer,
+        (XInterruptHandler)XTmrCtr_InterruptHandler,
+        Timer.Config.IntrId,
+        Timer.Config.IntrParent,
+        XINTERRUPT_DEFAULT_PRIORITY
+    );
+
+    if (estado != XST_SUCCESS)
+    {
+        return estado;
+    }
+
+    XTmrCtr_SetHandler(
+        &Timer,
+        atender_timer,
+        &Timer
+    );
     
     XTmrCtr_SetOptions(
         &Timer, 
         0, 
-        XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION);
+        XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION | XTC_INT_MODE_OPTION);
 
     XTmrCtr_SetResetValue(&Timer, 0, 99999);
 
