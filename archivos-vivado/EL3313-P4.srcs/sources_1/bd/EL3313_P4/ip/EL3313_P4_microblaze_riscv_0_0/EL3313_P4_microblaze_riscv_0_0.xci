@@ -959,7 +959,7 @@
     "contents": {
       "cpus": {
         "microblaze": {
-          "address_space_refs": "Data:Instruction",
+          "address_space_refs": "Instruction:Data",
           "parameters": {
             "endian": [ { "value": "little" } ],
             "elf_class": [ { "value": "32-bit" } ],
@@ -972,5 +972,5 @@
       }
     }
   },
-  "checksum": "d2837859"
+  "checksum": "f0be8e85"
 }
