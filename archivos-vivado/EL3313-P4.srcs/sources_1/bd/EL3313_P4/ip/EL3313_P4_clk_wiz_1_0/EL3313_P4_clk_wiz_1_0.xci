@@ -641,7 +641,7 @@
             "ASSOCIATED_PORT": [ { "value": "", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
             "ASSOCIATED_RESET": [ { "value": "", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
             "INSERT_VIP": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "simulation.rtl", "is_ips_inferred": true, "is_static_object": false } ],
-            "BOARD.ASSOCIATED_PARAM": [ { "value": "CLK_IN1_BOARD_INTERFACE", "usage": "all", "is_static_object": false } ]
+            "BOARD.ASSOCIATED_PARAM": [ { "value": "CLK_IN1_BOARD_INTERFACE", "value_permission": "bd", "usage": "all", "is_static_object": false } ]
           },
           "port_maps": {
             "CLK_IN1": [ { "physical_name": "clk_in1" } ]
@@ -668,5 +668,5 @@
       }
     }
   },
-  "checksum": "168d0a27"
+  "checksum": "930b3c3a"
 }

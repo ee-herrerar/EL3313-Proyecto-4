@@ -89,9 +89,15 @@ La arquitectura permite desarrollar y verificar los módulos individualmente y l
 
 ![Diagrama general del sistema, nivel 3](figuras/DN3.svg)
 
+##### 3.3.1.4. Nivel 4: arquitectura digital y etapa de potencia
+
+![Diagrama general del sistema, nivel 4](figuras/DN4.svg)
+
+DN4 desglosa el bloque de control digital y muestra su relación con la etapa de potencia. MicroBlaze V accede a la memoria y a los periféricos por sus buses correspondientes; AXI UART Lite comunica el sistema con la computadora; el PWM entrega señales a los drivers del puente H; y la corriente de la carga se realimenta mediante el sensor y el XADC. La figura representa la arquitectura funcional propuesta, no todas las conexiones ni el estado de integración actual en Vivado. En el Block Design disponible están el MicroBlaze V, la memoria, AXI Timer, XADC y AXI UART Lite; el AXI GPIO y el periférico PWM personalizado aún no aparecen integrados allí. Tampoco se muestra en DN4 el controlador de interrupciones, que conecta las interrupciones del Timer y de UART con el procesador, ni se ha establecido en ese Block Design la conexión de `pwm_trigger_o` al disparo del XADC.
+
 #### 3.3.2. Arquitectura general del sistema digital
 
-El diagrama resume la arquitectura digital propuesta en Vivado [3] y las relaciones de comunicación entre sus bloques: MicroBlaze V accede a BRAM y a los periféricos por AXI; el Timer entrega una interrupción periódica; el PWM sincroniza la adquisición y genera las señales de actuación; la UART enlaza el sistema con la computadora.
+El siguiente diagrama resume la arquitectura digital propuesta [3] y las relaciones funcionales entre sus bloques. MicroBlaze V accede a la memoria local por los buses LMB y a los periféricos por AXI4-Lite; las interrupciones del Timer y de UART llegan al procesador mediante el controlador de interrupciones; el PWM genera las señales de actuación y se propone usar su disparo para sincronizar la adquisición; la UART enlaza el sistema con la computadora. La presencia de un bloque en esta arquitectura propuesta no implica que ya esté integrado en el Block Design actual.
 
 ```mermaid
 flowchart TD
@@ -100,6 +106,7 @@ flowchart TD
     CPU["MicroBlaze V<br/>100 MHz"]
     TIMER["AXI Timer<br/>Interrupción periódica"]
     INTC["AXI Interrupt Controller"]
+    IRQ["Concatenador de interrupciones"]
     PWM["PWM personalizado<br/>SystemVerilog"]
     ADC["Interfaz ADC/XADC"]
     GPIO["AXI GPIO<br/>Botones / indicadores"]
@@ -107,13 +114,15 @@ flowchart TD
     POWER["Sensor y etapa de potencia"]
 
     PC <-->|USB-UART| UART
-    UART <-->|AXI4-Lite| CPU
     CPU <-->|ILMB / DLMB| BRAM
     CPU <-->|AXI4-Lite| TIMER
     CPU <-->|AXI4-Lite| PWM
     CPU <-->|AXI4-Lite| ADC
     CPU <-->|AXI4-Lite| GPIO
-    TIMER -->|Interrupción| INTC
+    UART <-->|AXI4-Lite| CPU
+    TIMER -->|Interrupción| IRQ
+    UART -->|Interrupción| IRQ
+    IRQ --> INTC
     INTC -->|Interrupción| CPU
     PWM -.->|pwm_trigger| ADC
     POWER -->|Corriente medida| ADC
@@ -142,11 +151,12 @@ flowchart TD
 ```
 
 #### 3.3.4. Diagrama interno del PWM personalizado
-A continuacion se desarrolla el diagrama de 4 nivel para este modulo:
 
-a) Nombre del modulo: PWM unipolar con AXI4-Lite
+A continuación se presenta la descomposición funcional del periférico PWM personalizado.
 
-b) Diagrama modular
+**a) Nombre del módulo:** PWM unipolar con AXI4-Lite.
+
+**b) Diagrama modular**
 
 El diagrama resume la implementación RTL: los registros AXI configuran la frecuencia, la referencia y el tiempo muerto; la portadora triangular y las comparaciones producen las órdenes de conmutación de las dos ramas, que pasan por la lógica de tiempo muerto. La señal `pwm_trigger_o` se genera en la mitad del período, y la habilitación y la falla controlan las salidas.
 
@@ -171,18 +181,16 @@ flowchart LR
     EN --> GA
     EN --> GB
 ```
-Diagrama tercer nivel
 
+**c) Objetivo del módulo**
 
-c) Objetivo del modulo.
-Es el actuador digital del lazo de control. Convierte el resultado del controlador PR, que el MicroBlaze V calcula en software, en las señales de compuerta que accionan el puente H del inversor. Así la corriente de la carga RL sigue la referencia sinusoidal de 50 Hz.
-Recibe duty_ref por AXI4-Lite. El software lo escribe una vez por período de control. Representa la tensión que el PR pide aplicar, normalizada entre −1 y 1.
-Genera la modulación PWM unipolar. La tensión promedio sobre la carga resulta Vdc · duty_ref, con rizado al doble de la frecuencia de conmutación.
-Inserta el tiempo muerto. Así los dos transistores de una misma rama nunca conducen a la vez, lo que evitaría un cortocircuito de la fuente.
-Sincroniza la medición. Emite pwm_trigger_o una vez por período, en el centro, para que el XADC muestree la corriente en un instante limpio.
-Protege el puente. Apaga las cuatro compuertas de inmediato ante fault_i o al deshabilitarse, y expone running para monitoreo.
+El periférico actúa como elemento de salida digital del lazo de control. Convierte la referencia calculada por el controlador PR, ejecutado por MicroBlaze V, en señales para los drivers del puente H. El objetivo del lazo es regular la corriente de la carga RL para que siga la referencia sinusoidal de 50 Hz.
 
-d) Entradas.
+El software escribe por AXI4-Lite la referencia de modulación `ref_q` en formato Q1.15, normalizada aproximadamente entre −1 y 1. El PWM genera la modulación unipolar y aplica un tiempo muerto configurable a cada rama para evitar la conducción simultánea de los dos transistores de esa rama. En el modelo ideal, la componente promedio de la tensión diferencial aplicada a la carga es proporcional a `Vdc · ref`; el rizado depende de la estrategia de modulación y de la frecuencia de conmutación.
+
+La señal `pwm_trigger_o` produce un pulso por período, en el centro de la portadora, y se propone utilizarla para sincronizar el muestreo del XADC. Ante `fault_i` o la deshabilitación, las cuatro salidas de compuerta se fuerzan a cero; `running` permite consultar el estado del periférico. La conexión del disparo y la señal de falla con sus fuentes externas deben completarse en la integración del sistema.
+
+**d) Entradas**
 | Señal | Descripción |
 |---|---|
 | aclk | Reloj del sistema, 100 MHz. |
@@ -198,9 +206,9 @@ d) Entradas.
 | s_axi_arprot | 	Atributos AXI. Se ignoran. |
 | s_axi_arvalid | 	Dirección de lectura válida. |
 | s_axi_rready| 	El master acepta el dato de lectura. |
-| fault_i | alla externa (sobrecorriente), activa en alto. |
+| fault_i | Señal externa de falla, activa en alto; por ejemplo, una condición de sobrecorriente detectada por un circuito de protección. |
 
-e) Salidas.
+**e) Salidas**
 | Señal | Descripción |
 |---|---|
 | s_axi_awready| El esclavo acepta la dirección de escritura. |
@@ -218,14 +226,14 @@ e) Salidas.
 | pwm_trigger_o| 	Pulso de 1 reloj, una vez por período, hacia el ADC. |
 
 
-f) Explicacion de la relacion con otros modulos.
+**f) Relación con otros módulos**
 
-| Modulo | Señales | Relacion |
+| Módulo | Señales | Relación |
 |---|---|---|
-|MicroBlaze V, por AXI SmartConnect| s_axi_* |  El software configura enable, freq_sel, deadtime y escribe duty_ref en cada período de control. También lee running y el estado de falla. La dirección base la asigna el Address Editor de Vivado.|
-| AXI Timer | ninguna | Sin conexión eléctrica. La relación es por software: el período del Timer debe coincidir con el período del PWM (period_for(freq_sel) relojes). |
-| AXI UART Lite | ninguna |El PWM no genera interrupciones. El software puede reflejar la falla en un LED vía GPIO leyendo el registro STATUS. |
-| XADC| pwm_trigger_o → convst_in |	Un pulso por período de conmutación, en el pico de la portadora. Alinea la conversión con el centro del período. |
+| MicroBlaze V, por AXI SmartConnect | `s_axi_*` | El software configura `enable`, `freq_sel` y `deadtime`, y escribe `ref_q` en cada período de control. También lee `running` y el estado de falla. La dirección base se asigna en el Address Editor de Vivado. |
+| AXI Timer | Ninguna directa | La relación es por software: el período del Timer debe coordinarse con el período PWM, definido por `period_for(freq_sel)` ciclos de reloj. |
+| AXI UART Lite | Ninguna directa | El PWM no genera interrupciones hacia la UART. El software puede consultar el estado de falla y reflejarlo en un indicador mediante GPIO, cuando ese periférico esté integrado. |
+| XADC | `pwm_trigger_o` → entrada de disparo de conversión | Se propone un pulso por período de conmutación para iniciar la adquisición cerca del centro de la portadora. Esta conexión no está presente en el Block Design actual. |
 
 
 
@@ -255,8 +263,9 @@ El Block Design asigna las siguientes direcciones a la memoria local y a los per
 | AXI UART Lite | `0x40600000` | 64 KB | Comunicación serial. |
 | AXI Interrupt Controller | `0x41200000` | 64 KB | Gestión de interrupciones. |
 | AXI Timer | `0x41C00000` | 64 KB | Temporización periódica. |
+| XADC Wizard | `0x44A00000` | 64 KB | Acceso AXI a los registros de adquisición. |
 
-Los offsets de los registros del PWM se describen en la sección siguiente; su dirección base depende de la asignación del Address Editor.
+Estas direcciones corresponden al Block Design actual. El periférico PWM personalizado y AXI GPIO aún no están integrados en él, por lo que todavía no tienen direcciones base asignadas. Los offsets del PWM se describen en la sección siguiente.
 
 ### 4.3. Registros del periférico PWM
 
@@ -284,7 +293,7 @@ Las señales del periférico PWM corresponden a su interfaz RTL. Las señales de
 | ADC/XADC | Inicio de conversión o `pwm_trigger_o` | Indicador de dato disponible y muestra digital | Adquiere la corriente de carga. |
 | AXI Timer | Acceso AXI y reloj/reset | `interrupt` | Genera la interrupción periódica del control. |
 | AXI UART Lite | Datos y control por AXI; recepción serial | Transmisión serial | Envía las muestras almacenadas a la computadora. |
-| AXI GPIO | Lectura de botones | Control de indicadores | Permite la solicitud de exportación e indica estados del sistema. |
+| AXI GPIO | Lectura de botones | Control de indicadores | Permite solicitar la exportación e indica estados del sistema. |
 
 ### 4.5. Interconexión y sincronización
 
@@ -297,20 +306,20 @@ AXI4-Lite sirve para configurar y consultar los periféricos. La temporización 
 El flujo descrito para la aplicación embebida en C comprende estas etapas:
 
 1. **Inicialización:** MicroBlaze V configura el Timer, PWM, ADC/XADC, UART y GPIO, y establece los parámetros iniciales de operación.
-2. **Ejecución periódica:** la interrupción del Timer inicia o captura la conversión ADC/XADC; la rutina valida la disponibilidad del dato, lee la muestra, calcula la ley PR y actualiza `ref_q` en el PWM.
-3. **Almacenamiento:** cada muestra se guarda en un buffer circular para mantener el historial.
-4. **Exportación:** ante un evento del botón, el sistema recorre el historial y transmite las muestras por UART a la computadora.
+2. **Adquisición:** en la arquitectura propuesta, `pwm_trigger_o` inicia una conversión del XADC por período PWM. La conversión debe completarse antes de que el software utilice la muestra.
+3. **Ejecución periódica:** la interrupción del AXI Timer notifica al procesador que debe ejecutar el ciclo de control. La rutina comprueba que la muestra esté disponible, la lee, calcula la ley PR y actualiza `ref_q` en el PWM. El período del Timer y la secuencia de adquisición deben coordinarse para que se procese la muestra correspondiente a cada iteración.
+4. **Almacenamiento:** cada muestra se guarda en un búfer circular para mantener el historial.
+5. **Exportación:** ante un evento del botón, el sistema recorre el historial y transmite las muestras por UART a la computadora.
 
 ### 5.2. Integración del sistema
 
-El siguiente diagrama organiza el ciclo de control completo descrito en la especificación: la medición se realimenta desde la etapa de potencia; el Timer inicia cada iteración; la referencia calculada actualiza el PWM; y la solicitud del botón permite exportar el historial sin formar parte de la secuencia periódica.
+El siguiente diagrama organiza el ciclo de control previsto: `pwm_trigger_o` inicia la conversión y el XADC entrega la muestra; la interrupción periódica del Timer agenda el procesamiento en MicroBlaze V; la referencia calculada actualiza el PWM. La solicitud del botón permite exportar el historial sin formar parte de la secuencia periódica. La coordinación entre el fin de conversión y la rutina periódica debe garantizarse en el software.
 
 ```mermaid
 flowchart TD
     I["Inicializar periféricos y parámetros<br/>Timer, PWM, ADC/XADC, UART y GPIO"] --> W["Esperar interrupción periódica del Timer"]
     W --> T["Interrupción del Timer"]
-    T --> A["Iniciar o capturar conversión ADC"]
-    A --> M["Validar disponibilidad y leer muestra de corriente"]
+    T --> M["Comprobar disponibilidad y leer muestra de corriente"]
     M --> C["Calcular control PR<br/>con la referencia de corriente"]
     C --> R["Escribir ref_q en registros del PWM"]
     R --> P["Generar PWM unipolar<br/>con tiempo muerto"]
@@ -318,13 +327,13 @@ flowchart TD
     D --> H["Etapa de potencia e inversor"]
     H --> S["Medir corriente de carga"]
     S --> X["ADC/XADC"]
-    X --> W
-    M --> B["Guardar muestra en buffer circular"]
+    X --> M
+    M --> B["Guardar muestra en búfer circular"]
     B --> W
     W -.->|Evento de botón| E["Recorrer muestras almacenadas"]
     E --> U["Transmitir por UART a la PC"]
     U --> W
-    P -.->|pwm_trigger_o| A
+    P -.->|pwm_trigger_o| X
 ```
 
 ## 6. Estrategia de implementación y validación

@@ -384,5 +384,67 @@ Esta metodología facilita la identificación de errores, permite comprobar cada
 
 
 ## Resultados
+
+### Validación del periférico PWM mediante simulación Tcl en Vivado
+
+Para validar el módulo PWM con interfaz AXI-Lite (`pwm_axi_lite.sv`) sin depender de la interfaz gráfica ni generar archivos residuales dentro del repositorio, se ejecutó una simulación comportamental en **Vivado 2026.1** utilizando la consola Tcl mediante los siguientes pasos:
+
+#### 1. Creación de un proyecto temporal
+Se generó un proyecto limpio dentro de la carpeta temporal del sistema operativo (`%TEMP%`) con marca de tiempo única, apuntando al dispositivo objetivo (`xc7a35tcpg236-1`):
+
+```tcl
+set simdir [file join $env(TEMP) "pwm_tb_sim_[clock seconds]"]
+create_project pwm_tb_sim $simdir -part xc7a35tcpg236-1
+```
+
+#### 2. Carga de fuentes y definición del *Top Module*
+Se asignaron las rutas del diseño RTL (`pwm_axi_lite.sv`) y del *testbench* (`tb_pwm_axi_lite.sv`), verificando su existencia en disco, agregándolos al conjunto de simulación (`sim_1`) y estableciendo el *testbench* como módulo principal:
+
+```tcl
+set rtl {C:\Users\User\Documents\GitHub\EL3313-Proyecto-4\archivos-vivado\pwm\pwm_axi_lite.sv}
+set tb  {C:\Users\User\Documents\GitHub\EL3313-Proyecto-4\archivos-vivado\pwm\tb_pwm_axi_lite.sv}
+
+add_files -fileset sim_1 -norecurse [list $rtl $tb]
+set_property top tb_pwm_axi_lite [get_filesets sim_1]
+update_compile_order -fileset sim_1
+```
+
+#### 3. Compilación, elaboración y ejecución (XSim)
+Se lanzó la simulación comportamental (`launch_simulation`), proceso en el cual Vivado compiló (`xvlog`) los módulos `pwm_axi_lite`, `deadtime_leg` y `tb_pwm_axi_lite`, elaboró el *snapshot* (`xelab`) y ejecutó los primeros `1000 ns` por defecto. Posteriormente, se corrió la simulación completa hasta encontrar la instrucción `$finish`:
+
+```tcl
+launch_simulation -simset sim_1 -mode behavioral
+run all
+```
+
+#### 4. Resultados de la verificación
+La simulación finalizó exitosamente en `665530 ns` superando todas las aserciones del *testbench*:
+
+* **Validación de frecuencias de salida:**
+  * Periodo de `10000` ciclos -> `10.0 kHz` (**PASS**)
+  * Periodo de `8000` ciclos -> `12.5 kHz` (**PASS**)
+  * Periodo de `5000` ciclos -> `20.0 kHz` (**PASS**)
+* **Integridad y tiempos muertos:** Se completaron **18 operaciones/verificaciones** de lectura/escritura AXI-Lite y conmutación sin detectar condiciones de *shoot-through*.
+
+
 ## Analisis e interpretacion de resultados
+
+Las Figuras 1 y 2 muestran la vista general de la simulación comportamental del periférico PWM. La primera captura agrupa el reloj, el reset y las transacciones AXI4-Lite; la segunda presenta la falla, las cuatro salidas de compuerta, el disparo `trig` y las señales del monitor del *testbench*.
+
+En la Figura 1 se observa que el registro de control, dirección `0x00`, recibe los valores `0x00000001`, `0x00000003` y `0x00000005`. Estos corresponden a habilitar el PWM y seleccionar, en secuencia, los tres casos de frecuencia probados. Las respuestas AXI muestran `OKAY` (`0`) y la lectura de control devuelve `0x00000009`: `running` y `enable` activos con el selector de frecuencia en `00`. Esto es consistente con la secuencia de configuración del *testbench*.
+
+En la Figura 2, `ah/al` y `bh/bl` conmutan en pares complementarios. El disparo `trig` aparece una vez por período; al cambiar la selección de frecuencia, los intervalos entre disparos se reducen, de acuerdo con los períodos de 100, 80 y 50 microsegundos (10, 12,5 y 20 kHz). La entrada `fault` permanece inactiva en el tramo mostrado. La referencia usada en la prueba se fija en cero antes de habilitar el PWM, por lo que las dos ramas muestran patrones coincidentes.
+
+En el instante inicial de las capturas, algunos valores se muestran como `X`. Esto corresponde al estado previo a que el reset síncrono sea muestreado por el primer flanco de reloj; no significa que las señales permanezcan indefinidas durante la operación. Después de la inicialización se observan valores definidos y la simulación concluye con los mensajes `PASS` del *testbench*.
+
+Las figuras son vistas generales y su escala de cientos de microsegundos no permite resolver visualmente el tiempo muerto, programado en cinco ciclos (50 ns a 100 MHz) en la prueba. El valor activo se actualiza al límite de período. La comprobación de ausencia de *shoot-through* y del intervalo mínimo se respalda en las aserciones del *testbench*, no en la resolución de estas capturas. En conjunto con los períodos medidos de 10 000, 8 000 y 5 000 ciclos y las 18 operaciones/verificaciones reportadas, los resultados validan el comportamiento funcional cubierto para el periférico aislado; no verifican su integración con MicroBlaze, XADC, AXI Timer ni el inversor físico.
+
+**Figura 1.** Transacciones AXI4-Lite durante la prueba del periferico PWM.
+
+![Transacciones AXI4-Lite y control del PWM](figuras-informe/pwm_tb-sim_primero.png)
+
+**Figura 2.** Salidas de compuerta, disparo PWM y señales del monitor del *testbench*.
+
+![Salidas PWM y disparo de muestreo](figuras-informe/pwm_tb-sim_segundo.png)
+
 ## Conclusiones y aprendizaje obtenido
