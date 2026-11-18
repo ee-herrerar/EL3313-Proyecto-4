@@ -1,7 +1,7 @@
 {
   "design": {
     "design_info": {
-      "boundary_crc": "0x91577990FBDDEBC3",
+      "boundary_crc": "0xCF0F3B9295982BFC",
       "device": "xc7a35tcpg236-1",
       "gen_directory": "../../../../EL3313-P4.gen/sources_1/bd/EL3313_P4",
       "name": "EL3313_P4",
@@ -30,7 +30,8 @@
       "xlconstant_0": "",
       "axi_bram_ctrl_0": "",
       "axi_smc": "",
-      "axi_bram_ctrl_0_bram": ""
+      "axi_bram_ctrl_0_bram": "",
+      "xadc_wiz_0": ""
     },
     "interface_ports": {
       "usb_uart": {
@@ -51,6 +52,27 @@
           "TxD": {
             "physical_name": "usb_uart_txd",
             "direction": "O"
+          }
+        }
+      },
+      "Vaux6_0": {
+        "mode": "Slave",
+        "vlnv_bus_definition": "xilinx.com:interface:diff_analog_io:1.0",
+        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0",
+        "hdl_attributes": {
+          "LOCKED": {
+            "value": "FALSE",
+            "value_src": "default"
+          }
+        },
+        "port_maps": {
+          "V_N": {
+            "physical_name": "Vaux6_0_v_n",
+            "direction": "I"
+          },
+          "V_P": {
+            "physical_name": "Vaux6_0_v_p",
+            "direction": "I"
           }
         }
       }
@@ -492,7 +514,7 @@
         "has_run_ip_tcl": "true",
         "parameters": {
           "NUM_MI": {
-            "value": "3"
+            "value": "4"
           },
           "NUM_SI": {
             "value": "1"
@@ -506,11 +528,12 @@
             "bridges": [
               "M00_AXI",
               "M01_AXI",
-              "M02_AXI"
+              "M02_AXI",
+              "M03_AXI"
             ],
             "bd_attributes": {
               "BRIDGES": {
-                "value": "M00_AXI:M01_AXI:M02_AXI",
+                "value": "M00_AXI:M01_AXI:M02_AXI:M03_AXI",
                 "value_src": "auto"
               },
               "TYPE": {
@@ -542,6 +565,17 @@
             }
           },
           "M02_AXI": {
+            "mode": "Master",
+            "vlnv_bus_definition": "xilinx.com:interface:aximm:1.0",
+            "vlnv": "xilinx.com:interface:aximm_rtl:1.0",
+            "bd_attributes": {
+              "TYPE": {
+                "value": "interior",
+                "value_src": "default"
+              }
+            }
+          },
+          "M03_AXI": {
             "mode": "Master",
             "vlnv_bus_definition": "xilinx.com:interface:aximm:1.0",
             "vlnv": "xilinx.com:interface:aximm_rtl:1.0",
@@ -802,9 +836,43 @@
         "xci_path": "ip\\EL3313_P4_axi_bram_ctrl_0_bram_0\\EL3313_P4_axi_bram_ctrl_0_bram_0.xci",
         "inst_hier_path": "axi_bram_ctrl_0_bram",
         "has_run_ip_tcl": "true"
+      },
+      "xadc_wiz_0": {
+        "vlnv": "xilinx.com:ip:xadc_wiz:3.3",
+        "ip_revision": "15",
+        "xci_name": "EL3313_P4_xadc_wiz_0_1",
+        "xci_path": "ip\\EL3313_P4_xadc_wiz_0_1\\EL3313_P4_xadc_wiz_0_1.xci",
+        "inst_hier_path": "xadc_wiz_0",
+        "has_run_ip_tcl": "true",
+        "parameters": {
+          "BIPOLAR_OPERATION": {
+            "value": "false"
+          },
+          "OT_ALARM": {
+            "value": "false"
+          },
+          "SINGLE_CHANNEL_SELECTION": {
+            "value": "VAUXP6_VAUXN6"
+          },
+          "USER_TEMP_ALARM": {
+            "value": "false"
+          },
+          "VCCAUX_ALARM": {
+            "value": "false"
+          },
+          "VCCINT_ALARM": {
+            "value": "false"
+          }
+        }
       }
     },
     "interface_nets": {
+      "Vaux6_0_1": {
+        "interface_ports": [
+          "Vaux6_0",
+          "xadc_wiz_0/Vaux6"
+        ]
+      },
       "axi_bram_ctrl_0_BRAM_PORTA": {
         "interface_ports": [
           "axi_bram_ctrl_0_bram/BRAM_PORTA",
@@ -845,6 +913,12 @@
         "interface_ports": [
           "microblaze_riscv_0_axi_periph/M02_AXI",
           "axi_uartlite_0/S_AXI"
+        ]
+      },
+      "microblaze_riscv_0_axi_periph_M03_AXI": {
+        "interface_ports": [
+          "microblaze_riscv_0_axi_periph/M03_AXI",
+          "xadc_wiz_0/s_axi_lite"
         ]
       },
       "microblaze_riscv_0_debug": {
@@ -915,7 +989,8 @@
           "axi_timer_0/s_axi_aclk",
           "axi_uartlite_0/s_axi_aclk",
           "axi_smc/aclk",
-          "axi_bram_ctrl_0/s_axi_aclk"
+          "axi_bram_ctrl_0/s_axi_aclk",
+          "xadc_wiz_0/s_axi_aclk"
         ]
       },
       "microblaze_riscv_0_intr": {
@@ -952,7 +1027,8 @@
           "axi_timer_0/s_axi_aresetn",
           "axi_uartlite_0/s_axi_aresetn",
           "axi_bram_ctrl_0/s_axi_aresetn",
-          "axi_smc/aresetn"
+          "axi_smc/aresetn",
+          "xadc_wiz_0/s_axi_aresetn"
         ]
       },
       "sys_clock_1": {
@@ -994,6 +1070,11 @@
               "SEG_microblaze_riscv_0_axi_intc_Reg": {
                 "address_block": "/microblaze_riscv_0_axi_intc/S_AXI/Reg",
                 "offset": "0x41200000",
+                "range": "64K"
+              },
+              "SEG_xadc_wiz_0_Reg": {
+                "address_block": "/xadc_wiz_0/s_axi_lite/Reg",
+                "offset": "0x44A00000",
                 "range": "64K"
               }
             }
