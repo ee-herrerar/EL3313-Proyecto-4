@@ -1,16 +1,26 @@
 ## Informe técnico — Proyecto 4:Control de corriente en un inversor monofasico mediante un regulador PR discreto sobre MicroBlaze V
+
 Curso: EL3313 Taller de Diseño Digital
 Semestre: II Semestre 2026
 Proyecto:Control de corriente en un inversor monofasico ymediante un regulador PR discreto sobre MicroBlaze V
 Plataforma FPGA: Digilent Basys 3
 
+
 ## Resumen
 
-## Introduccion
+El proyecto consiste en el desarrollo de un sistema digital embebido basado en MicroBlaze V sobre una FPGA Basys 3, destinado al control de corriente de un inversor monofásico mediante un regulador PR discreto. La arquitectura emplea interfaces AXI4-Lite para integrar periféricos de temporización, adquisición de datos, generación PWM y comunicación UART. Se configuró y validó el sistema base en Vivado y Vitis, comprobando la ejecución de código C, la comunicación serial y el funcionamiento de las interrupciones periódicas del AXI Timer. Adicionalmente, se desarrolló un periférico PWM personalizado en SystemVerilog con su respectivo testbench y se incorporó el XADC al diseño de hardware. Estos avances establecen la base para completar la integración y verificar el funcionamiento del sistema de control.
+
+
+## Introducción
+
+El presente proyecto tiene como objetivo desarrollar un sistema digital embebido basado en el procesador MicroBlaze V, implementado sobre una FPGA Artix-7 de la tarjeta Basys 3. Este sistema está orientado al control de corriente de un inversor monofásico mediante un regulador proporcional-resonante (PR) discreto, integrando diferentes periféricos digitales para la adquisición de datos, la generación de señales de control y la comunicación con una computadora.
+
+La arquitectura utiliza interfaces AXI4-Lite para establecer la comunicación entre el procesador y los periféricos. Entre sus componentes principales se encuentran el AXI Timer, encargado de establecer la base temporal mediante interrupciones periódicas; el ADC/XADC, destinado a la adquisición de muestras de corriente; el controlador PWM personalizado, desarrollado en SystemVerilog; y el AXI UART Lite, utilizado para transmitir información hacia una computadora. El software embebido se desarrolla en C mediante Vitis, mientras que la configuración e integración del hardware se realizan en Vivado.
+
+Este informe presenta los fundamentos teóricos, las decisiones de diseño y la implementación de la plataforma digital. Asimismo, documenta las pruebas funcionales, los resultados de simulación y la verificación de los componentes desarrollados, con el propósito de evaluar el cumplimiento de los requisitos establecidos e identificar las principales limitaciones y oportunidades de mejora del sistema.
 
 
 ## Fundamentación teórica
-
 
 Esta sección presenta los conceptos que sustentan el diseño digital del Proyecto 4: el procesador MicroBlaze V, el controlador PWM, la interfaz de adquisición ADC/XADC y el controlador UART. Cada apartado describe el concepto, su principio de funcionamiento y su relación con las decisiones del proyecto. Los valores marcados como *propuestos* están pendientes de validación con el componente de potencia (EL4201).
 
@@ -32,6 +42,7 @@ El uso de RISC-V permite aprovechar su ecosistema de herramientas de software, y
 | F | Punto flotante de precisión simple |
 | C | Instrucciones comprimidas de 16 bits, que reducen el tamaño del código |
 
+
 #### 1.2 Arquitectura y buses
 
 El procesador sigue una arquitectura Harvard: tiene accesos separados para instrucciones y datos. En un sistema típico se distinguen dos tipos de interfaz:
@@ -51,6 +62,7 @@ AXI4-Lite es un subconjunto simplificado de AXI4, con transferencias individuale
 
 Además, el módulo de depuración MDM (*MicroBlaze Debug Module*) permite programar, detener y depurar el procesador por JTAG desde Vitis [2].
 
+
 #### 1.3 Flujo de diseño y modelo de programación
 
 El diseño se divide en dos entornos:
@@ -59,6 +71,7 @@ El diseño se divide en dos entornos:
 2. **Vitis:** se crea una plataforma a partir del XSA y se desarrolla la aplicación en C en modo *bare-metal*, es decir, sin sistema operativo. El *Board Support Package* (BSP) genera `xparameters.h` con las direcciones base y proporciona los controladores de cada IP.
 
 Desde C, el acceso a un registro de periférico es una lectura o escritura en una dirección, por ejemplo mediante `Xil_In32` y `Xil_Out32` o los controladores de cada IP.
+
 
 #### 1.4 Tiempo real y determinismo
 
@@ -70,6 +83,7 @@ Dos factores afectan el determinismo:
 - **Aritmética del controlador:** con la extensión F, el cálculo en punto flotante se hace en hardware. Sin ella, se emula por software y consume muchos más ciclos. La alternativa es una implementación en punto fijo.
 
 La ISR dispone de un presupuesto de tiempo acotado. Con un reloj de 100 MHz, un ciclo dura 10 ns. A una frecuencia de conmutación de 10 kHz, medio período equivale a 50 µs, es decir, 5 000 ciclos.
+
 
 #### 1.5 Relación con el proyecto
 
@@ -105,6 +119,7 @@ f_c    = R / (2π·L)
 
 Si la frecuencia de conmutación es muy superior a `f_c`, la corriente sigue la tensión media y el rizado de conmutación queda atenuado [6], [7].
 
+
 #### 2.2 Generación digital: portadora y comparador
 
 En una implementación digital, la modulación se obtiene comparando una **portadora** (un contador) con una **referencia** (el valor deseado). La salida está en alto mientras la portadora es menor que la referencia.
@@ -121,6 +136,7 @@ La **resolución** depende de cuántas cuentas de reloj caben en un período, `N
 | 20 kHz | 5 000 | 12,3 bits |
 
 A mayor frecuencia de conmutación, menor rizado pero menor resolución y mayores pérdidas por conmutación.
+
 
 #### 2.3 Puente H y modulación unipolar
 
@@ -159,6 +175,7 @@ Como cada pulso de `v_ab` ocurre al doble de la frecuencia de conmutación de ca
 
 A modo de ilustración, para cumplir un rizado máximo de 0,20 A con `Vdc = 24 V` y `f_sw = 10 kHz`, esta estimación exige `L ≳ 1,5 mH`. La selección definitiva de `L` y de `f_sw` corresponde a EL4201.
 
+
 #### 2.4 Tiempo muerto
 
 Los transistores no conmutan instantáneamente. Si el inferior se enciende antes de que el superior termine de apagarse, ambos conducen a la vez y cortocircuitan la fuente (*shoot-through*). Para evitarlo se inserta un **tiempo muerto** `t_d`: al cambiar de estado, ambos transistores de la rama permanecen apagados durante ese intervalo [6], [7].
@@ -172,6 +189,7 @@ El tiempo muerto tiene un costo: introduce un error de tensión que depende del 
 Por ejemplo, con `Vdc = 24 V`, `t_d = 210 ns` y `f_sw = 10 kHz` resulta aproximadamente 0,10 V. Este error distorsiona la corriente, en particular cerca de sus cruces por cero, y puede compensarse en el controlador. Además, un pulso más corto que el tiempo muerto no puede generarse, lo que limita el ciclo de trabajo cerca de 0 % y 100 %.
 
 En el diseño propuesto, el tiempo muerto es programable de 1 a 100 ciclos de reloj, con valor inicial de 20. El tiempo efectivo es de aproximadamente `(D+1)` ciclos de 10 ns.
+
 
 #### 2.5 Interfaz AXI4-Lite y registros
 
@@ -190,11 +208,13 @@ Tres principios de diseño sustentan esta interfaz:
 - **Saturación:** toda escritura fuera del rango admisible se limita al valor válido más cercano. Así el software no puede forzar una modulación inválida.
 - **Registro sombra:** la referencia, el período y el tiempo muerto escritos por el software se copian a registros activos solo al final de cada período de la portadora. Si cambiaran en medio del período, aparecerían pulsos cortados o duplicados.
 
+
 #### 2.6 Sincronización con la adquisición
 
 En una modulación simétrica, el valor medio de la corriente en un período coincide con su valor en el centro del período, es decir, en el pico y el valle de la portadora. Muestrear en ese instante evita que el rizado de conmutación contamine la medida (*aliasing* del rizado) [8]. Por eso el controlador emite una señal `pwm_trigger_o` una vez por período, en el pico de la portadora, que dispara la conversión del ADC.
 
 El orden temporal es: muestreo en el pico, cálculo del control en el procesador y aplicación del nuevo valor al inicio del siguiente período. Estos retardos (de cómputo y de actualización del modulador) deben incluirse en el análisis de estabilidad del lazo, lo que corresponde al componente de control de EL4201.
+
 
 #### 2.7 Relación con el proyecto
 
@@ -217,6 +237,7 @@ El enunciado exige que este módulo sea personalizado y en SystemVerilog, porque
 
 El XADC es un convertidor analógico-digital integrado en las FPGA de la serie 7 de AMD. Contiene dos ADC de 12 bits que alcanzan 1 MSPS, además de sensores internos de temperatura y tensión [9]. Las entradas externas son diferenciales. Las 16 entradas auxiliares (`VAUXP[15:0]` y `VAUXN[15:0]`) comparten los pines físicos con las E/S digitales [9].
 
+
 #### 3.2 Rango de entrada y resolución
 
 En modo unipolar, la entrada diferencial admite de 0 V a 1,0 V, y la tensión en `VP` respecto a `VN` debe ser siempre positiva [9]. Con 12 bits, el escalón de cuantización es:
@@ -226,6 +247,7 @@ LSB = 1 V / 2^12 ≈ 244 µV
 ```
 
 El resultado de cada conversión se almacena en un registro de 16 bits, justificado hacia el bit más significativo, de modo que el dato de 12 bits ocupa los bits `[15:4]` [9].
+
 
 #### 3.3 Acondicionamiento de la corriente
 
@@ -238,6 +260,7 @@ i     = (v_adc − V_off) / k
 
 donde `V_off` coloca el cero de corriente en el centro del rango (propuesto 0,5 V) y `k` (V/A) se elige para que el pico de 1,0 A, con margen, no sature el rango. La resolución en corriente es `LSB / k`. Estos valores los define EL4201 junto con el filtro antialias del sensor.
 
+
 #### 3.4 Modos de muestreo
 
 El XADC tiene dos modos de temporización [9]:
@@ -249,9 +272,11 @@ El XADC tiene dos modos de temporización [9]:
 
 El modo orientado a eventos se usa cuando se necesita control preciso del instante de muestreo [9]. En este proyecto, `CONVST` se conecta a `pwm_trigger_o`, de modo que cada conversión queda alineada con el centro del período de conmutación. Una conversión completa dura aproximadamente 26 ciclos del reloj del ADC, es decir, cerca de 1 µs a 26 MHz, un tiempo mucho menor que el período del PWM.
 
+
 #### 3.5 Acceso desde el procesador
 
 El XADC se configura y se lee por el puerto de reconfiguración dinámica (DRP), un bus de registros de 7 bits de dirección [9]. En Vivado, el asistente *XADC Wizard* genera una IP con interfaz AXI4-Lite que expone esos registros al procesador. Los resultados de los canales auxiliares ocupan las direcciones `10h` a `1Fh` del espacio DRP [9]. El software lee el dato, lo desplaza 4 bits y lo convierte a amperios con la relación de la sección 3.3.
+
 
 #### 3.6 Relación con el proyecto
 
@@ -270,6 +295,7 @@ El XADC se configura y se lee por el puerto de reconfiguración dinámica (DRP),
 #### 4.1 Concepto
 
 La UART (*Universal Asynchronous Receiver/Transmitter*) es un enlace serial asíncrono: no comparte una señal de reloj entre emisor y receptor. Ambos acuerdan de antemano la velocidad (baudios) y el formato de cada carácter [10].
+
 
 #### 4.2 Formato de la trama
 
@@ -292,6 +318,7 @@ t_car         = 10 / B
 
 Para 115 200 baudios: 11 520 caracteres por segundo, es decir, unos 86,8 µs por carácter.
 
+
 #### 4.3 El IP AXI UART Lite
 
 El AXI UART Lite es un controlador de UART con interfaz AXI4-Lite. Sus características principales son [10]:
@@ -303,6 +330,7 @@ El AXI UART Lite es un controlador de UART con interfaz AXI4-Lite. Sus caracter�
 - Generador de velocidad (BRG) y control de interrupciones.
 
 El procesador accede a sus registros mapeados en memoria: la FIFO de recepción, la FIFO de transmisión, el registro de estado (que indica, por ejemplo, si la FIFO de transmisión está llena) y el registro de control, que permite habilitar interrupciones y limpiar las FIFO [10].
+
 
 #### 4.4 Consideraciones de tiempo en el proyecto
 
@@ -317,6 +345,7 @@ Por ejemplo, 1 000 muestras en texto de 6 caracteres a 115 200 baudios requieren
 1. **La FIFO de 16 caracteres** se vacía en unos 1,4 ms a esta velocidad, por lo que el software no puede enviar datos más rápido que el enlace.
 2. **Un carácter dura 86,8 µs**, un tiempo comparable con el período de control (100 µs a 10 kHz). Por eso la exportación no debe ejecutarse dentro de la ISR del lazo, sino en el programa principal o por interrupción, de modo que la transmisión no afecte la periodicidad del control.
 
+
 #### 4.5 Relación con el proyecto
 
 | Aspecto | Decisión |
@@ -328,6 +357,7 @@ Por ejemplo, 1 000 muestras en texto de 6 caracteres a 115 200 baudios requieren
 | Almacenamiento | Búfer circular en la BRAM local |
 
 ---
+
 
 ### Inversor monofasico
 
