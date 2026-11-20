@@ -634,7 +634,7 @@ La simulación finalizó exitosamente en `665530 ns` superando todas las asercio
 ### Validación del periférico PWM mediante mediciones con el osciloscopio
 Se realizaron mediciones de laboratorio para el periférico PWM con una frecuencias de conmutación de fsw = 20kHz y con el tiempo muerto configurado en 200ns (ambos valores podrían adaptarse mas adelante). En la siguiente imagen se muestran las señales complementarias que van al driver para encender el MOSFET superior y el inferior del inversor en determinados momentos. Las sondas del osciloscopio están configuradas a x10 para esta medición. 
 
-![Circuito PWM](./figuras-informe/onda_osciloscopio.PNG)
+![Circuito PWM](./figuras-informe/onda_osciloscopio(1).PNG)
 
 Se usaron los cursores del osciloscopio para medir el tiempo muerto, se puede observar en la diferencia entre los cursores que este corresponde al valor configurado de 200ns. 
 
