@@ -511,6 +511,15 @@ stateDiagram-v2
 
 El diagrama constituye una representación funcional simplificada del comportamiento de una rama del PWM y de las condiciones globales de habilitación y falla. No representa necesariamente los nombres de los estados internos utilizados en la implementación RTL.
 
+### AXI GPIO (botones)
+
+IP de AMD configurada como 4 entradas (`push_buttons_4bits`), con driver propio `gpio.c/h`.
+
+| Botón | Función |
+|---|---|
+| BTN0 | Exporta las muestras por UART (solo en el flanco de subida) |
+| BTN1 | Parada de emergencia: llama a `control_detener()` |
+
 ## Resultados
 
 
