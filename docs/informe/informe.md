@@ -358,6 +358,21 @@ Por ejemplo, 1 000 muestras en texto de 6 caracteres a 115 200 baudios requieren
 
 ---
 
+### 5. Controlador proporcional-resonante (PR) discreto
+
+El controlador proporcional-resonante (PR) es un algoritmo de control diseñado para realizar el seguimiento de señales sinusoidales. Combina una acción proporcional, que responde al error instantáneo, con una acción resonante, que proporciona una ganancia elevada alrededor de una frecuencia determinada.
+
+En este proyecto, el controlador se plantea para seguir una referencia sinusoidal de corriente de 50 Hz, cuya frecuencia angular corresponde a:
+
+\[
+\omega_0=2\pi(50)\approx314,16\ \text{rad/s}
+\]
+
+Para implementarlo en el procesador MicroBlaze V, el controlador debe discretizarse y expresarse mediante una ecuación en diferencias. Esta ecuación permite calcular la acción de control a partir del error actual y de valores almacenados de iteraciones anteriores.
+
+Su ejecución requiere establecer un período de muestreo constante y coordinar la adquisición de datos con las actualizaciones de la señal de control.
+
+En la versión actual del proyecto se ha comprobado el funcionamiento de las interrupciones periódicas del AXI Timer. La implementación y validación del algoritmo PR dentro de la aplicación C permanecen pendientes.
 
 
 ## Enfoque de la solución y justificación del diseño
@@ -621,6 +636,22 @@ Las figuras son vistas generales y su escala de cientos de microsegundos no perm
 
 ![Salidas PWM y disparo de muestreo](figuras-informe/pwm_tb-sim_segundo.png)
 
+
+### Análisis de resultados de la plataforma digital
+
+Las pruebas realizadas sobre MicroBlaze V permitieron comprobar la ejecución de programas desarrollados en C y la comunicación con los periféricos mediante AXI. La transmisión de mensajes por UART confirmó el funcionamiento de la interfaz serial y permitió observar el estado del sistema durante las pruebas.
+
+El AXI Timer se configuró con un período nominal de 1 ms. Las lecturas del contador mostraron una disminución de su valor, consistente con el funcionamiento descendente configurado. Asimismo, el registro de 1000 interrupciones confirmó la ejecución periódica de la rutina de atención. Sin embargo, estas pruebas no permiten determinar el jitter ni comprobar la precisión temporal del sistema bajo condiciones de mayor carga de procesamiento.
+
+En cuanto a la utilización de recursos, el diseño implementado ocupó un 18,48 % de las LUT, un 7,50 % de los registros, un 22 % de la memoria BRAM y un 4,44 % de los DSP disponibles en la FPGA. Estos resultados indican que la plataforma base utiliza una fracción de los recursos del dispositivo, aunque todavía deben considerarse los recursos adicionales necesarios para integrar los módulos pendientes.
+
+El análisis de temporización presentó un WNS de 0,456 ns y un TNS de 0 ns, sin violaciones de *setup* ni de *hold* en las rutas analizadas. Esto confirma el cumplimiento de las restricciones temporales configuradas para el diseño implementado a 100 MHz. No obstante, se identificaron tres puertos sin restricciones de retardo de entrada o salida, por lo que la verificación temporal de las interfaces externas no está completa.
+
+Finalmente, el reporte de utilización indicó que el recurso físico XADC no fue utilizado en la implementación analizada. Este resultado requiere revisar su integración efectiva antes de considerar validada la adquisición de datos.
+
+En conjunto, los resultados demuestran el funcionamiento de la plataforma embebida básica y establecen una base para continuar con la integración de los periféricos y la ejecución del controlador de corriente.
+
+
 ## Conclusiones y aprendizaje obtenido
 
 Plataforma embebida. Se configuró un sistema basado en MicroBlaze V sobre la FPGA Basys 3, con periféricos conectados por AXI4-Lite. Se comprobó la ejecución de código C, la comunicación serial por UART y las interrupciones periódicas del AXI Timer, que constituyen la base temporal del lazo de control. Esto cumple los objetivos de diseñar el sistema base y de comunicar el software con el hardware mediante registros mapeados en memoria.
@@ -636,21 +667,40 @@ Registros sombra y saturación evitan estados inválidos. Aplicar los cambios so
 La interfaz de registros es un contrato. Definir con precisión offsets, bits y formato (Q1.15) fue necesario para que el software de control y el hardware se desarrollaran en paralelo, y exige coordinar temprano la frecuencia de conmutación, el período de muestreo y el formato de la referencia con el componente de potencia.
 Distinguir lo verificado de lo no verificado. Declarar explícitamente qué cubre cada prueba y qué no cubre hace que los resultados sean confiables y deja claro qué falta por demostrar.
 
+La implementación de MicroBlaze V permitió comprobar el funcionamiento de una arquitectura embebida basada en periféricos AXI. Las pruebas de comunicación UART y del AXI Timer demostraron que el procesador puede ejecutar programas en C y atender interrupciones periódicas, estableciendo una base funcional para el desarrollo del sistema de control.
+
+El análisis de utilización mostró que la plataforma implementada ocupa un porcentaje reducido de los recursos disponibles en la FPGA, con un 18,48 % de LUT, un 7,50 % de registros y un 22 % de memoria BRAM. Asimismo, los resultados de temporización confirmaron el cumplimiento de las restricciones configuradas para el reloj de 100 MHz, sin violaciones en las rutas analizadas.
+
+Como principal aprendizaje, se identificó la importancia de verificar los resultados de implementación, además de validar el Block Design. Aunque el XADC se incorporó a la arquitectura, el reporte de utilización no mostró recursos asociados a este periférico, por lo que su integración efectiva requiere una revisión adicional.
+
+Finalmente, las pruebas realizadas validan el funcionamiento del sistema embebido básico, pero no demuestran todavía la ejecución completa del lazo de control. La integración de los módulos restantes y su verificación conjunta constituyen las principales tareas pendientes.
 
 ## Bibliografía
 
-[1] EL3313 Taller de Diseño Digital y EL4201 Procesamiento Electrónico de Potencia, “Proyecto 4: Control de corriente en un inversor monofásico mediante un regulador PR discreto sobre MicroBlaze V,” II semestre de 2026. Documento de especificaciones del proyecto.
 
-[2] AMD, *MicroBlaze V Processor Reference Guide*, UG1629. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug1629-microblaze-v-user-guide/.
+[1] AMD, *MicroBlaze V Processor Reference Guide*, UG1629, 2026. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug1629-microblaze-v-user-guide.
 
-[3] AMD, *Vivado Design Suite User Guide: Designing IP Subsystems*, UG994. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug994-vivado-ip-subsystems.
+[2] AMD, *MicroBlaze V Processor Embedded Design User Guide*, UG1711, 2026. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug1711-microblaze-v-embedded-design.
 
-[4] AMD, *AXI Reference Guide*, UG1037. [En línea]. Disponible en: https://docs.amd.com/v/u/en-US/ug1037-vivado-axi-reference-guide.
+[3] AMD, *Vivado Design Suite User Guide: Designing IP Subsystems Using IP Integrator*, UG994. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug994-vivado-ip-subsystems.
 
-[5] AMD, *Vivado Design Suite User Guide: Creating and Packaging Custom IP*, UG1118. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug1118-vivado-creating-packaging-custom-ip.
+[4] RISC-V International, *The RISC-V Instruction Set Manual, Volume I: Unprivileged Architecture*, 2026. [En línea]. Disponible en: https://docs.riscv.org/reference/isa/unpriv/unpriv-index.html.
 
-[6] AMD, *7 Series FPGAs and Zynq-7000 SoC XADC Dual 12-Bit 1 MSPS Analog-to-Digital Converter User Guide*, UG480. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug480_7Series_XADC.
+[5] AMD, *Vivado Design Suite: AXI Reference Guide*, UG1037. [En línea]. Disponible en: https://docs.amd.com/v/u/en-US/ug1037-vivado-axi-reference-guide.
 
-[7] AMD, *AXI Timer Product Guide*, PG079. [En línea]. Disponible en: https://docs.amd.com/r/en-US/pg079-axi-timer.
+[6] Texas Instruments, *CDD PWM Module — F29H85x Documentation*. [En línea]. Disponible en: https://software-dl.ti.com/C2000/docs/mcal/F29H85x/latest/src/Module_User_Guide_Cdd_Pwm.html.
 
-[8] AMD, *AXI UART Lite Product Guide*, PG142. [En línea]. Disponible en: https://docs.amd.com/r/en-US/pg142-axi-uartlite.
+[7] Microchip Technology, *PWM Edge and Center Aligned Modes*. [En línea]. Disponible en: https://developerhelp.microchip.com/xwiki/bin/view/applications/power/digital-power-converter-basics/digital-peripherals-mimicking-analog-behavior/pwm-edge-center-aligned-modes/.
+
+[8] Microchip Technology, *Digital Implementation of a Control Loop*. [En línea]. Disponible en: https://developerhelp.microchip.com/xwiki/bin/view/applications/power/digital-power-converter-basics/implementation-of-a-control-loop/.
+
+[9] AMD, *7 Series FPGAs and Zynq-7000 SoC XADC Dual 12-Bit 1 MSPS Analog-to-Digital Converter User Guide*, UG480. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug480_7Series_XADC.
+
+[10] AMD, *AXI UART Lite Product Guide*, PG142. [En línea]. Disponible en: https://docs.amd.com/v/u/en-US/pg142-axi-uartlite.
+
+[11] AMD, *AXI Timer Product Guide*, PG079. [En línea]. Disponible en: https://docs.amd.com/r/en-US/pg079-axi-timer.
+
+[12] Escuela de Ingeniería Electrónica, Tecnológico de Costa Rica, *Proyecto 4: Control de corriente en un inversor monofásico mediante un regulador PR discreto sobre MicroBlaze V*, EL3313 Taller de Diseño Digital, II semestre de 2026.
+
+[13] D. N. Zmood y D. G. Holmes, “Stationary frame current regulation of PWM inverters with zero steady-state error,” *IEEE Transactions on Power Electronics*, vol. 18, n.º 3, pp. 814–822, 2003. doi: 10.1109/TPEL.2003.810852.
+
