@@ -380,7 +380,184 @@ La implementación se desarrolla de manera incremental, verificando primero el f
 Esta metodología facilita la identificación de errores, permite comprobar cada componente de forma independiente y simplifica la integración del sistema.
 
 
+## Implementación del sistema digital
+
+### Configuración del hardware en Vivado
+
+La plataforma digital se desarrolló en Vivado 2026.1 utilizando la FPGA Artix-7 de la tarjeta Basys 3. Se configuró el procesador MicroBlaze V a 100 MHz, con 32 KB de memoria local y 8 KB de caché de instrucciones.
+
+Se incorporaron los periféricos AXI Timer, AXI Interrupt Controller, AXI UART Lite y XADC Wizard, conectados al procesador mediante interfaces AXI. El XADC se configuró para utilizar el canal analógico VAUX6.
+
+Se verificó la arquitectura mediante *Validate Design* y se completaron satisfactoriamente los procesos de síntesis, implementación y generación del bitstream del sistema base.
+
+### Desarrollo del software en Vitis
+
+La aplicación embebida se desarrolló en C utilizando Vitis 2026.1. Inicialmente, se comprobó la ejecución del procesador mediante mensajes enviados por UART a una velocidad de 115200 baudios.
+
+Posteriormente, se implementó la inicialización del AXI Timer y la configuración de interrupciones periódicas. El temporizador utiliza un valor de recarga de 99999 ciclos, equivalente a un período nominal de 1 ms con un reloj de 100 MHz.
+
+La rutina de interrupción incrementa un contador global, mientras que el programa principal consulta su valor y transmite periódicamente la cantidad de interrupciones registradas mediante UART.
+
+### Desarrollo de los periféricos personalizados
+
+El controlador PWM se desarrolló en SystemVerilog mediante el módulo `pwm_axi_lite.sv`. Su diseño contempla modulación unipolar, tiempo muerto configurable, manejo de fallas y tres frecuencias seleccionables: 10 kHz, 12,5 kHz y 20 kHz. Además, se desarrolló un testbench autoverificable para comprobar su comportamiento.
+
+Por otra parte, se prepararon los archivos `xadc.h` y `xadc.c` para gestionar la adquisición de muestras mediante el XADC.
+
+En la versión analizada, la integración del PWM al Block Design y la utilización del XADC desde el programa principal permanecen pendientes. Por lo tanto, las pruebas realizadas sobre la plataforma base y el PWM corresponden a verificaciones parciales del sistema digital.
+
+
+### Interconexión AXI4-Lite y registros del PWM
+
+La comunicación entre MicroBlaze V y los periféricos se realiza mediante interfaces AXI4-Lite. Este protocolo permite acceder a registros mapeados en memoria para configurar los dispositivos y consultar su estado.
+
+Las direcciones base asignadas en Vivado son las siguientes:
+
+| Periférico | Dirección base |
+|---|---|
+| AXI UART Lite | `0x40600000` |
+| AXI Interrupt Controller | `0x41200000` |
+| AXI Timer | `0x41C00000` |
+| XADC Wizard | `0x44A00000` |
+
+El periférico PWM personalizado incorpora una interfaz AXI4-Lite que permite configurar su funcionamiento mediante cuatro registros:
+
+| Offset | Registro | Descripción |
+|---|---|---|
+| `0x00` | CONTROL | Habilitación del PWM, selección de frecuencia y estado de ejecución. |
+| `0x04` | DUTY | Referencia de modulación `ref_q` en formato Q1.15. |
+| `0x08` | DEADTIME | Tiempo muerto configurable entre 1 y 100 ciclos de reloj. |
+| `0x0C` | STATUS | Estado de falla y señal de protección. |
+
+El registro CONTROL permite seleccionar las frecuencias de 10 kHz, 12,5 kHz y 20 kHz mediante el campo `freq_sel`. El registro DUTY recibe la referencia de modulación calculada por el software, mientras que DEADTIME establece el intervalo de seguridad entre las señales complementarias.
+
+La interfaz también permite consultar si el PWM se encuentra activo y detectar condiciones de falla. Ante una falla, el módulo desactiva las cuatro salidas de compuerta.
+
+Aunque la interfaz AXI4-Lite está desarrollada en el módulo `pwm_axi_lite.sv`, su dirección base permanece pendiente de asignación, debido a que todavía no se ha integrado al Block Design de Vivado.
+
+### Diagramas de funcionamiento
+
+flowchart TD
+    A([Inicio]) --> B["Enviar mensaje de inicio por UART"]
+    B --> C["Inicializar AXI Timer e interrupciones"]
+    C --> D{"¿Inicialización exitosa?"}
+
+    D -->|No| E["Informar error por UART"]
+    D -->|Sí| F["Configurar período de 1 ms e iniciar Timer"]
+
+    F --> G["Consultar contador de interrupciones"]
+    E --> G
+
+    G --> H{"¿1000 nuevas interrupciones?"}
+
+    H -->|No| G
+    H -->|Sí| I["Transmitir contador por UART"]
+    I --> G
+
+    F -.->|Interrupción periódica| J["Rutina de interrupción"]
+    J --> K["Incrementar contador global"]
+    K -.-> G
+
+
+   stateDiagram-v2
+    [*] --> Deshabilitado
+
+    Deshabilitado --> Activo: enable = 1 y sin falla
+    Activo --> Deshabilitado: enable = 0
+    Activo --> Falla: fault_i = 1
+    Falla --> Deshabilitado: enable = 0
+
+    state Activo {
+        [*] --> EvaluarOrden
+
+        EvaluarOrden --> SuperiorActivo: Orden superior
+        EvaluarOrden --> InferiorActivo: Orden inferior
+
+        SuperiorActivo --> TiempoMuertoInferior: Cambio de orden
+        TiempoMuertoInferior --> InferiorActivo: Tiempo cumplido
+
+        InferiorActivo --> TiempoMuertoSuperior: Cambio de orden
+        TiempoMuertoSuperior --> SuperiorActivo: Tiempo cumplido
+    }
+
 ## Resultados
+
+
+### Validación de MicroBlaze V, AXI Timer y UART
+
+Se realizaron pruebas funcionales sobre la tarjeta Basys 3 para comprobar la ejecución del procesador MicroBlaze V y la comunicación con los periféricos AXI Timer y AXI UART Lite.
+
+Inicialmente, se verificó la ejecución de un programa desarrollado en C mediante Vitis 2026.1. La aplicación transmitió correctamente mensajes por UART utilizando una velocidad de 115200 baudios, lo que permitió confirmar la ejecución del software y el funcionamiento de la comunicación serial.
+
+Posteriormente, se inicializó el AXI Timer y se configuró su funcionamiento mediante interrupciones periódicas. El temporizador se programó con un valor de recarga de 99999 ciclos y un reloj de 100 MHz, correspondiente a un período nominal de 1 ms.
+
+Para comprobar su funcionamiento, se realizaron dos lecturas consecutivas del contador y se verificó el incremento de una variable global desde la rutina de interrupción.
+
+La terminal UART mostró los siguientes resultados:
+
+```text
+Iniciando sistema...
+Lectura 1: 99957
+Lectura 2: 88904
+AXI Timer inicializado correctamente
+Interrupciones: 1000
+```
+
+Las lecturas del temporizador muestran una disminución del valor del contador, consistente con su configuración descendente. Asimismo, el registro de 1000 interrupciones confirma que el procesador ejecuta la rutina de atención y actualiza correctamente el contador global.
+
+| Prueba | Resultado |
+|---|---|
+| Ejecución de código C en MicroBlaze V | Exitosa |
+| Comunicación UART a 115200 baudios | Exitosa |
+| Inicialización del AXI Timer | Exitosa |
+| Lectura del contador | Exitosa |
+| Atención de interrupciones periódicas | Exitosa |
+
+Los resultados permiten comprobar el funcionamiento básico de la plataforma embebida y su capacidad para ejecutar tareas mediante interrupciones. No obstante, estas pruebas no permiten determinar el jitter ni verificar todavía la ejecución completa del controlador PR y su interacción con el XADC y el PWM.
+
+
+### Utilización de recursos de la FPGA
+
+Se realizó un análisis de utilización de recursos mediante Vivado 2026.1, utilizando el reporte generado después de la implementación y el enrutamiento del diseño sobre la FPGA Artix-7 `xc7a35tcpg236-1` de la tarjeta Basys 3.
+
+Los resultados obtenidos se presentan en la siguiente tabla:
+
+| Recurso | Utilizados | Disponibles | Utilización |
+|---|---:|---:|---:|
+| Slice LUTs | 3843 | 20 800 | 18,48 % |
+| Slice Registers | 3121 | 41 600 | 7,50 % |
+| Block RAM | 11 | 50 | 22,00 % |
+| DSPs | 4 | 90 | 4,44 % |
+| IOB | 4 | 106 | 3,77 % |
+
+La utilización de recursos muestra que la plataforma digital ocupa una fracción de la capacidad disponible en la FPGA. El mayor porcentaje corresponde a la memoria BRAM, con un 22 %, seguido de las LUT, con un 18,48 %.
+
+Estos resultados corresponden a la versión implementada del sistema base y no incluyen el periférico PWM personalizado, cuya integración permanece pendiente.
+
+
+### Análisis de temporización
+
+Se realizó un análisis de temporización del diseño implementado mediante Vivado 2026.1, utilizando el reporte *Timing Summary* posterior al enrutamiento.
+
+El sistema utiliza un reloj principal de 100 MHz, correspondiente a un período de 10 ns. Los resultados obtenidos se presentan en la siguiente tabla:
+
+| Parámetro | Resultado |
+|---|---:|
+| Frecuencia de operación | 100 MHz |
+| Período de reloj | 10 ns |
+| Worst Negative Slack (WNS) | 0,456 ns |
+| Total Negative Slack (TNS) | 0,000 ns |
+| Worst Hold Slack (WHS) | 0,041 ns |
+| Total Hold Slack (THS) | 0,000 ns |
+| Violaciones de setup | 0 |
+| Violaciones de hold | 0 |
+
+Los resultados muestran un margen positivo de 0,456 ns para las comprobaciones de *setup* y de 0,041 ns para las de *hold*. Asimismo, el TNS y el THS presentan valores de cero, por lo que no se detectaron violaciones en las rutas analizadas.
+
+Vivado confirmó el cumplimiento de las restricciones de temporización especificadas para el diseño implementado. No obstante, el reporte también identificó tres puertos sin restricciones de retardo de entrada o salida, por lo que la verificación temporal de las interfaces externas no se considera completa.
+
+Estos resultados corresponden a la plataforma digital implementada y no incluyen la integración del periférico PWM personalizado.
+
 
 ### Validación del periférico PWM mediante simulación Tcl en Vivado
 
