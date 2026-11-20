@@ -60,10 +60,10 @@
         "C_M_AXI_DC_USER_SIGNALS": [ { "value": "0", "value_src": "propagated", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_M_AXI_IC_USER_SIGNALS": [ { "value": "0", "value_src": "propagated", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "G_TEMPLATE_LIST": [ { "value": "2", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "C_USE_MULDIV": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "C_USE_ATOMIC": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "C_USE_MULDIV": [ { "value": "1", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "C_USE_ATOMIC": [ { "value": "1", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_USE_FPU": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "C_USE_COMPRESSION": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "C_USE_COMPRESSION": [ { "value": "1", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_USE_EMBEDDED": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_USE_BITMAN_A": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_USE_BITMAN_B": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
@@ -163,7 +163,7 @@
         "C_DEBUG_ENABLED": [ { "value": "1", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_DEBUG_INTERFACE": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_DEBUG_NUM_PROGBUF": [ { "value": "2", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "C_NUMBER_OF_PC_BRK": [ { "value": "2", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "C_NUMBER_OF_PC_BRK": [ { "value": "2", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_NUMBER_OF_RD_ADDR_BRK": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_NUMBER_OF_WR_ADDR_BRK": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C_DEBUG_EVENT_COUNTERS": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
@@ -972,5 +972,5 @@
       }
     }
   },
-  "checksum": "d2837859"
+  "checksum": "072259a7"
 }

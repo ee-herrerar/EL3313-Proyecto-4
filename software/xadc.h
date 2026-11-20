@@ -1,7 +1,6 @@
 /*
  * xadc.h
  * Lectura de la corriente de carga (ACS712 + acondicionador) con el XADC.
- * Canal: VAUX6 (par XA1 del conector JXADC de la Basys 3).
  */
 
 #ifndef XADC_H
