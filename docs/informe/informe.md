@@ -380,9 +380,6 @@ La implementación se desarrolla de manera incremental, verificando primero el f
 Esta metodología facilita la identificación de errores, permite comprobar cada componente de forma independiente y simplifica la integración del sistema.
 
 
-### Inversor monofasico
-
-
 ## Resultados
 
 ### Validación del periférico PWM mediante simulación Tcl en Vivado
@@ -448,3 +445,35 @@ Las figuras son vistas generales y su escala de cientos de microsegundos no perm
 ![Salidas PWM y disparo de muestreo](figuras-informe/pwm_tb-sim_segundo.png)
 
 ## Conclusiones y aprendizaje obtenido
+
+Plataforma embebida. Se configuró un sistema basado en MicroBlaze V sobre la FPGA Basys 3, con periféricos conectados por AXI4-Lite. Se comprobó la ejecución de código C, la comunicación serial por UART y las interrupciones periódicas del AXI Timer, que constituyen la base temporal del lazo de control. Esto cumple los objetivos de diseñar el sistema base y de comunicar el software con el hardware mediante registros mapeados en memoria.
+Periférico PWM personalizado. Se desarrolló en SystemVerilog un controlador PWM con interfaz AXI4-Lite que genera modulación unipolar con portadora triangular, ofrece tres frecuencias de conmutación (10, 12,5 y 20 kHz), tiempo muerto programable, saturación de la referencia en formato Q1.15, apagado por falla (fault_i) y una señal de sincronización (pwm_trigger_o) hacia el ADC. Su diseño con registros sombra permite cambiar la configuración sin alterar el período en curso.
+Verificación del PWM. El testbench autoverificable completo ejecutó 1 801 comprobaciones en 16 secciones, sin ningún fallo. Los períodos medidos del trigger (10 000, 8 000 y 5 000 ciclos) corresponden a 10, 12,5 y 20 kHz; los tiempos de conducción coinciden con los valores teóricos en 24 puntos de operación; y durante toda la simulación no se detectó ningún caso con los dos transistores de una rama activos. Además, la verificación cubre los casos de borde que exige el enunciado: saturación, límites del tiempo muerto, cambio de frecuencia en operación y falla durante transiciones.
+Interpretación de los resultados. Las formas de onda concuerdan con el comportamiento esperado: las salidas de cada rama son complementarias, el trigger aparece una vez por período y los intervalos entre disparos siguen los períodos de 100, 80 y 50 µs. El análisis también mostró que el tiempo muerto efectivo es de D + 1 ciclos y no de D: con D = 5 resultan 6 ciclos (60 ns).
+Alcance y limitaciones. La validación presentada corresponde al periférico PWM aislado, con un maestro AXI ideal y simulación comportamental. Este informe no incluye evidencia de la integración del PWM con MicroBlaze V, el XADC y el AXI Timer, ni ensayos en lazo cerrado sobre el inversor físico, ni uso de recursos, análisis de timing o simulación post-implementación. Por lo tanto, los criterios cuantitativos del inversor (error de amplitud de la fundamental no mayor al 10 % y rizado no mayor a 0,20 A pico a pico) no se demuestran en este documento.
+
+Diseño modular y validación por etapas. Verificar primero el procesador, la UART y el Timer, y después el PWM de forma aislada, permitió acotar el origen de cada error antes de integrar.
+El tiempo muerto es un acuerdo entre hardware y software. El valor programado no es el efectivo, y su efecto sobre la tensión debe tenerse presente al diseñar el controlador.
+Un testbench autoverificable aporta más que la inspección de ondas. Con la escala de cientos de microsegundos de las capturas no se distingue un tiempo muerto de decenas de nanosegundos; su verificación depende de comprobaciones automáticas con criterios de paso y fallo definidos de antemano.
+Registros sombra y saturación evitan estados inválidos. Aplicar los cambios solo al límite del período y limitar la referencia protege el puente H de pulsos espurios.
+La interfaz de registros es un contrato. Definir con precisión offsets, bits y formato (Q1.15) fue necesario para que el software de control y el hardware se desarrollaran en paralelo, y exige coordinar temprano la frecuencia de conmutación, el período de muestreo y el formato de la referencia con el componente de potencia.
+Distinguir lo verificado de lo no verificado. Declarar explícitamente qué cubre cada prueba y qué no cubre hace que los resultados sean confiables y deja claro qué falta por demostrar.
+
+
+## Bibliografía
+
+[1] EL3313 Taller de Diseño Digital y EL4201 Procesamiento Electrónico de Potencia, “Proyecto 4: Control de corriente en un inversor monofásico mediante un regulador PR discreto sobre MicroBlaze V,” II semestre de 2026. Documento de especificaciones del proyecto.
+
+[2] AMD, *MicroBlaze V Processor Reference Guide*, UG1629. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug1629-microblaze-v-user-guide/.
+
+[3] AMD, *Vivado Design Suite User Guide: Designing IP Subsystems*, UG994. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug994-vivado-ip-subsystems.
+
+[4] AMD, *AXI Reference Guide*, UG1037. [En línea]. Disponible en: https://docs.amd.com/v/u/en-US/ug1037-vivado-axi-reference-guide.
+
+[5] AMD, *Vivado Design Suite User Guide: Creating and Packaging Custom IP*, UG1118. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug1118-vivado-creating-packaging-custom-ip.
+
+[6] AMD, *7 Series FPGAs and Zynq-7000 SoC XADC Dual 12-Bit 1 MSPS Analog-to-Digital Converter User Guide*, UG480. [En línea]. Disponible en: https://docs.amd.com/r/en-US/ug480_7Series_XADC.
+
+[7] AMD, *AXI Timer Product Guide*, PG079. [En línea]. Disponible en: https://docs.amd.com/r/en-US/pg079-axi-timer.
+
+[8] AMD, *AXI UART Lite Product Guide*, PG142. [En línea]. Disponible en: https://docs.amd.com/r/en-US/pg142-axi-uartlite.
