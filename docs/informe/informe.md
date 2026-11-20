@@ -449,9 +449,15 @@ El registro CONTROL permite seleccionar las frecuencias de 10 kHz, 12,5 kHz y 20
 La interfaz también permite consultar si el PWM se encuentra activo y detectar condiciones de falla. Ante una falla, el módulo desactiva las cuatro salidas de compuerta.
 
 Aunque la interfaz AXI4-Lite está desarrollada en el módulo `pwm_axi_lite.sv`, su dirección base permanece pendiente de asignación, debido a que todavía no se ha integrado al Block Design de Vivado.
-
 ### Diagramas de funcionamiento
 
+#### Diagrama de flujo del programa principal
+
+El siguiente diagrama representa el funcionamiento del programa principal desarrollado en C para MicroBlaze V. El sistema inicializa el AXI Timer, configura las interrupciones periódicas y permanece en un ciclo de ejecución continua donde consulta el contador de interrupciones.
+
+La rutina de interrupción incrementa el contador global, mientras que el programa principal transmite su valor mediante UART cada 1000 interrupciones.
+
+```mermaid
 flowchart TD
     A([Inicio]) --> B["Enviar mensaje de inicio por UART"]
     B --> C["Inicializar AXI Timer e interrupciones"]
@@ -472,9 +478,16 @@ flowchart TD
     F -.->|Interrupción periódica| J["Rutina de interrupción"]
     J --> K["Incrementar contador global"]
     K -.-> G
+```
 
+Este diagrama corresponde al funcionamiento implementado y verificado en Vitis. La adquisición mediante XADC y la ejecución del controlador PR permanecen pendientes de integración al programa principal.
 
-   stateDiagram-v2
+#### Diagrama de estados del PWM personalizado
+
+El siguiente diagrama representa los estados funcionales del periférico PWM personalizado. Se consideran las condiciones de habilitación, operación normal y falla, así como las transiciones entre las señales complementarias de una rama mediante la inserción de tiempo muerto.
+
+```mermaid
+stateDiagram-v2
     [*] --> Deshabilitado
 
     Deshabilitado --> Activo: enable = 1 y sin falla
@@ -494,6 +507,9 @@ flowchart TD
         InferiorActivo --> TiempoMuertoSuperior: Cambio de orden
         TiempoMuertoSuperior --> SuperiorActivo: Tiempo cumplido
     }
+```
+
+El diagrama constituye una representación funcional simplificada del comportamiento de una rama del PWM y de las condiciones globales de habilitación y falla. No representa necesariamente los nombres de los estados internos utilizados en la implementación RTL.
 
 ## Resultados
 
