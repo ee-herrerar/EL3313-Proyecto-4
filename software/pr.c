@@ -19,18 +19,35 @@ void pr_reiniciar(pr_t *c)
     c->u1 = c->u2 = 0.0f;
 }
 
-/* u[k] = b0 e[k] + b1 e[k-1] + b2 e[k-2] - a1 u[k-1] - a2 u[k-2] */
+
+/* u[k] = b0 e[k] + b1 e[k-1] + b2 e[k-2]
+        - a1 u[k-1] - a2 u[k-2] */
 float pr_actualizar(pr_t *c, float ref, float medida)
 {
+    /* 1. Calcular error actual */
     float e = ref - medida;
 
-    float u = c->b0 * e + c->b1 * c->e1 + c->b2 * c->e2
-            - c->a1 * c->u1 - c->a2 * c->u2;
+    /* 2. Calcular salida del controlador */
+    float u = c->b0 * e
+            + c->b1 * c->e1
+            + c->b2 * c->e2
+            - c->a1 * c->u1
+            - c->a2 * c->u2;
 
-    /* Saturación; se guarda el valor saturado como anti-windup simple */
+    /* 3. Saturar la salida */
+    if (u > c->u_max)
+        u = c->u_max;
 
-    if (u >  c->u_max) u =  c->u_max;
-    if (u < -c->u_max) u = -c->u_max;
+    if (u < -c->u_max)
+        u = -c->u_max;
+
+    /* 4. Actualizar historial de errores */
+    c->e2 = c->e1;
+    c->e1 = e;
+
+    /* 5. Actualizar historial de salidas */
+    c->u2 = c->u1;
+    c->u1 = u;
 
     return u;
 }

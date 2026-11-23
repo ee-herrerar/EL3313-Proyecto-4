@@ -2,7 +2,7 @@
 #define BUFFER_H
 #include "xil_types.h"
 
-#define N_BUF 2048
+#define N_BUF 1536
 
 typedef struct {
     s16 i_mA;
