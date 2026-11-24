@@ -1134,8 +1134,8 @@
           "microblaze_riscv_0_axi_intc/s_axi_aclk",
           "microblaze_riscv_0_axi_intc/processor_clk",
           "microblaze_riscv_0_axi_periph/aclk",
-          "pwm_axi_lite_0/aclk",
-          "axi_gpio_0/s_axi_aclk"
+          "axi_gpio_0/s_axi_aclk",
+          "pwm_axi_lite_0/aclk"
         ]
       },
       "microblaze_riscv_0_intr": {
@@ -1204,8 +1204,8 @@
           "xadc_wiz_0/s_axi_aresetn",
           "microblaze_riscv_0_axi_intc/s_axi_aresetn",
           "microblaze_riscv_0_axi_periph/aresetn",
-          "pwm_axi_lite_0/aresetn",
-          "axi_gpio_0/s_axi_aresetn"
+          "axi_gpio_0/s_axi_aresetn",
+          "pwm_axi_lite_0/aresetn"
         ]
       },
       "sys_clock_1": {

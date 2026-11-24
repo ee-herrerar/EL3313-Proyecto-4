@@ -1,19 +1,19 @@
 {
    "ActiveEmotionalView":"Default View",
    "Default View_ScaleFactor":"1.04739",
-   "Default View_TopLeft":"1413,615",
+   "Default View_TopLeft":"1411,615",
    "ExpandedHierarchyInLayout":"",
    "guistr":"# # String gsaved with Nlview 7.8.0 2024-04-26 e1825d835c VDI=44 GEI=38 GUI=JA:24.0
 #  -string -flagsOSRD
-preplace port usb_uart -pg 1 -lvl 8 -x 2470 -y 330 -defaultsOSRD
+preplace port usb_uart -pg 1 -lvl 8 -x 2480 -y 330 -defaultsOSRD
 preplace port Vaux6_0 -pg 1 -lvl 0 -x -30 -y 790 -defaultsOSRD
-preplace port push_buttons_4bits -pg 1 -lvl 8 -x 2470 -y 930 -defaultsOSRD
+preplace port push_buttons_4bits -pg 1 -lvl 8 -x 2480 -y 930 -defaultsOSRD
 preplace port port-id_sys_clock -pg 1 -lvl 0 -x -30 -y 410 -defaultsOSRD
 preplace port port-id_reset -pg 1 -lvl 0 -x -30 -y 330 -defaultsOSRD
-preplace port port-id_gate_bh_o_0 -pg 1 -lvl 8 -x 2470 -y 750 -defaultsOSRD
-preplace port port-id_gate_al_o_0 -pg 1 -lvl 8 -x 2470 -y 720 -defaultsOSRD
-preplace port port-id_gate_ah_o_0 -pg 1 -lvl 8 -x 2470 -y 690 -defaultsOSRD
-preplace port port-id_gate_bl_o_0 -pg 1 -lvl 8 -x 2470 -y 780 -defaultsOSRD
+preplace port port-id_gate_bh_o_0 -pg 1 -lvl 8 -x 2480 -y 750 -defaultsOSRD
+preplace port port-id_gate_al_o_0 -pg 1 -lvl 8 -x 2480 -y 720 -defaultsOSRD
+preplace port port-id_gate_ah_o_0 -pg 1 -lvl 8 -x 2480 -y 690 -defaultsOSRD
+preplace port port-id_gate_bl_o_0 -pg 1 -lvl 8 -x 2480 -y 780 -defaultsOSRD
 preplace inst microblaze_riscv_0 -pg 1 -lvl 4 -x 1220 -y 230 -defaultsOSRD
 preplace inst microblaze_riscv_0_local_memory -pg 1 -lvl 6 -x 1910 -y 730 -defaultsOSRD
 preplace inst microblaze_riscv_0_axi_periph -pg 1 -lvl 6 -x 1910 -y 300 -defaultsOSRD
@@ -52,6 +52,7 @@ preplace netloc xlconstant_0_dout 1 6 1 2120 70n
 preplace netloc xlconstant_1_dout 1 5 2 1720 40 2130
 preplace netloc Vaux6_0_1 1 0 7 30 50 N 50 N 50 NJ 50 NJ 50 N 50 2060J
 preplace netloc axi_bram_ctrl_0_BRAM_PORTA 1 4 2 N 450 1730
+preplace netloc axi_gpio_0_GPIO 1 7 1 2420 930n
 preplace netloc axi_smc_M00_AXI 1 3 4 960 30 NJ 30 N 30 2050
 preplace netloc axi_uartlite_0_UART 1 7 1 N 330
 preplace netloc microblaze_riscv_0_M_AXI_IC 1 4 2 1480 310 1760
@@ -60,15 +61,14 @@ preplace netloc microblaze_riscv_0_axi_periph_M01_AXI 1 6 1 2080 50n
 preplace netloc microblaze_riscv_0_axi_periph_M02_AXI 1 6 1 2160 290n
 preplace netloc microblaze_riscv_0_axi_periph_M03_AXI 1 6 1 2090 310n
 preplace netloc microblaze_riscv_0_axi_periph_M04_AXI 1 6 1 2080 330n
+preplace netloc microblaze_riscv_0_axi_periph_M05_AXI 1 6 1 2070 350n
 preplace netloc microblaze_riscv_0_debug 1 3 1 920 220n
 preplace netloc microblaze_riscv_0_dlmb_1 1 4 2 N 200 1770
 preplace netloc microblaze_riscv_0_ilmb_1 1 4 2 N 220 1710
 preplace netloc microblaze_riscv_0_intc_axi 1 2 5 660 60 NJ 60 NJ 60 N 60 2040
 preplace netloc microblaze_riscv_0_interrupt 1 3 1 950 170n
-preplace netloc microblaze_riscv_0_axi_periph_M05_AXI 1 6 1 2070 350n
-preplace netloc axi_gpio_0_GPIO 1 7 1 N 930
-levelinfo -pg 1 -30 120 433 780 1220 1600 1910 2290 2470
-pagesize -pg 1 -db -bbox -sgen -150 -160 2650 1710
+levelinfo -pg 1 -30 120 433 780 1220 1600 1910 2290 2480
+pagesize -pg 1 -db -bbox -sgen -150 -160 2660 1710
 "
 }
 0
