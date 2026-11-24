@@ -7,7 +7,8 @@
       "name": "EL3313_P4",
       "rev_ctrl_bd_flag": "RevCtrlBdOff",
       "synth_flow_mode": "Hierarchical",
-      "tool_version": "2026.1"
+      "tool_version": "2026.1",
+      "validated": "true"
     },
     "design_tree": {
       "microblaze_riscv_0": "",
@@ -103,8 +104,20 @@
         "type": "clk",
         "direction": "I",
         "parameters": {
+          "CLK_DOMAIN": {
+            "value": "EL3313_P4_sys_clock",
+            "value_src": "default"
+          },
           "FREQ_HZ": {
             "value": "100000000"
+          },
+          "FREQ_TOLERANCE_HZ": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
           },
           "PHASE": {
             "value": "0.0"
@@ -115,6 +128,10 @@
         "type": "rst",
         "direction": "I",
         "parameters": {
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
           "POLARITY": {
             "value": "ACTIVE_HIGH"
           }
@@ -909,6 +926,12 @@
           "BIPOLAR_OPERATION": {
             "value": "false"
           },
+          "ENABLE_RESET": {
+            "value": "false"
+          },
+          "INTERFACE_SELECTION": {
+            "value": "Enable_AXI"
+          },
           "OT_ALARM": {
             "value": "false"
           },
@@ -1115,13 +1138,13 @@
           "axi_uartlite_0/s_axi_aclk",
           "axi_smc/aclk",
           "axi_bram_ctrl_0/s_axi_aclk",
-          "xadc_wiz_0/s_axi_aclk",
           "microblaze_riscv_0/Clk",
           "pwm_axi_lite_0/aclk",
           "axi_gpio_0/s_axi_aclk",
           "microblaze_riscv_0_axi_intc/s_axi_aclk",
           "microblaze_riscv_0_axi_intc/processor_clk",
-          "microblaze_riscv_0_axi_periph/aclk"
+          "microblaze_riscv_0_axi_periph/aclk",
+          "xadc_wiz_0/s_axi_aclk"
         ]
       },
       "microblaze_riscv_0_intr": {
@@ -1187,11 +1210,11 @@
           "axi_uartlite_0/s_axi_aresetn",
           "axi_bram_ctrl_0/s_axi_aresetn",
           "axi_smc/aresetn",
-          "xadc_wiz_0/s_axi_aresetn",
           "pwm_axi_lite_0/aresetn",
           "axi_gpio_0/s_axi_aresetn",
           "microblaze_riscv_0_axi_intc/s_axi_aresetn",
-          "microblaze_riscv_0_axi_periph/aresetn"
+          "microblaze_riscv_0_axi_periph/aresetn",
+          "xadc_wiz_0/s_axi_aresetn"
         ]
       },
       "sys_clock_1": {

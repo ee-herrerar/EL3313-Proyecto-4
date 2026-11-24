@@ -71,6 +71,8 @@ module tb_pwm_axi_lite;
     // DUT
     // ========================================================
 
+
+
     pwm_axi_lite dut (
         .aclk(clk),
         .aresetn(resetn),
@@ -755,7 +757,7 @@ module tb_pwm_axi_lite;
 
         // 20 kHz: control = 101
 
-        axi_write(REG_CTRL, 32'h5);
+        axi_write(REG_CTRL, 32'h5); ////TEST DE FALLO
         check_period(5000, "20 kHz");
 
         // ----------------------------------------------------

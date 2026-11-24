@@ -9,7 +9,7 @@
     "parameters": {
       "component_parameters": {
         "Component_Name": [ { "value": "EL3313_P4_xadc_wiz_0_1", "resolve_type": "user", "usage": "all" } ],
-        "INTERFACE_SELECTION": [ { "value": "Enable_AXI", "resolve_type": "user", "usage": "all" } ],
+        "INTERFACE_SELECTION": [ { "value": "Enable_AXI", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
         "SIM_FILE_SEL": [ { "value": "Default", "resolve_type": "user", "usage": "all" } ],
         "SIM_FILE_REL_PATH": [ { "value": "./", "resolve_type": "user", "enabled": false, "usage": "all" } ],
         "NUM_WAVE": [ { "value": "1", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
@@ -26,7 +26,7 @@
         "SEQUENCER_MODE": [ { "value": "Off", "resolve_type": "user", "usage": "all" } ],
         "ENABLE_CALIBRATION_AVERAGING": [ { "value": "true", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "ENABLE_DRP": [ { "value": "true", "resolve_type": "user", "format": "bool", "usage": "all" } ],
-        "ENABLE_RESET": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
+        "ENABLE_RESET": [ { "value": "false", "value_src": "user", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "ENABLE_CONVST": [ { "value": "true", "resolve_type": "user", "usage": "all" } ],
         "ENABLE_CONVSTCLK": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "ENABLE_CHANNEL": [ { "value": "true", "resolve_type": "user", "format": "bool", "usage": "all" } ],
@@ -400,7 +400,7 @@
           "mode": "master",
           "parameters": {
             "SENSITIVITY": [ { "value": "LEVEL_HIGH", "value_src": "constant", "value_permission": "bd_and_user", "usage": "all" } ],
-            "PortWidth": [ { "value": "1", "value_permission": "bd_and_user", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ]
+            "PortWidth": [ { "value": "1", "value_src": "default_prop", "value_permission": "bd_and_user", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ]
           },
           "port_maps": {
             "INTERRUPT": [ { "physical_name": "ip2intc_irpt" } ]
@@ -427,5 +427,5 @@
       }
     }
   },
-  "checksum": "3df90015"
+  "checksum": "2057458d"
 }

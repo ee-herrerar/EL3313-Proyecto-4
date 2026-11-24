@@ -1,3 +1,4 @@
+
 #include "xparameters.h"
 #include "xil_printf.h"
 #include "xstatus.h"
@@ -6,138 +7,67 @@
 #include "xuartlite_l.h"
 #include "xil_types.h"
 #include "xinterrupt_wrap.h"
-#include <stdint.h>
 #include "xil_io.h"
 #include "xadc.h"
 #include "pwm.h"
 #include "buffer.h"
 #include "gpio.h"
+#include "sleep.h"
+#include <stdint.h>
 
-/* ===========================================================
-   PROYECTO EL3313: PR A 40 kHz EN PUNTO FIJO
-   PWM de potencia bloqueado por defecto.
-   No se modifica ningun driver existente.
-   =========================================================== */
+#define PR_CONFIGURADO 0
+#define PWM_FREQ_SEL 2U
+#define TIEMPO_MUERTO_NS 500U
+#define PERIODO_US 25U
+#define CICLOS_PERIODO 2500U
+#define TIMER_RESET_VALUE 2499U
+#define N_SENO 800U
+#define I_MAX_MA 1500
+#define SIGNO_SENSOR 1
+#define MUESTRAS_ETAPA 400000U
 
-#define PR_CONFIGURADO       0
-#define PWM_FREQ_SEL         2U
-#define TIEMPO_MUERTO_NS     500U
-#define PERIODO_US           25U
-#define CICLOS_PERIODO       2500U
-#define TIMER_RESET_VALUE    2499U
-#define N_SENO               800U
-#define I_MAX_MA             1500
-#define SIGNO_SENSOR         1
-#define MUESTRAS_ETAPA       400000U
-
-/*
- * PR discreto, Fs = 40 kHz, 50 Hz.
- *
- * Coeficientes originales:
- *
- * b = {
- *    6.0749898553,
- *  -11.9981301409,
- *    5.9235103476
- * }
- *
- * a = {
- *    1,
- *   -1.9996883568,
- *    0.9997500338
- * }
- *
- * b se escala a unidades Q15_PWM/mA en Q24:
- *
- * BQ = round(b * (32767/12000) * 2^24)
- * AQ = round(a * 2^24)
- *
- * Estado de salida: cuentas PWM con 15 bits fraccionarios.
- *
- * Ninguna operacion float se ejecuta dentro de la ISR.
- */
-
-#define B0_Q24   278304923L
-#define B1_Q24  -549653375L
-#define B2_Q24   271365406L
-
-#define A1_Q24   -33549203L
-#define A2_Q24    16773022L
-
-/* Limite de modulacion: |m| <= 0.95 */
-
-#define UMAX_Q15  (31128L * 32768L)
-
-/* ===========================================================
-   ESTADO DEL CONTROLADOR
-   =========================================================== */
+#define B0_Q24 278304923L
+#define B1_Q24 -549653375L
+#define B2_Q24 271365406L
+#define A1_Q24 -33549203L
+#define A2_Q24 16773022L
+#define UMAX_Q15 (31128L * 32768L)
 
 typedef struct
 {
     s32 e1;
     s32 e2;
-
     s32 u1;
     s32 u2;
-
 } pr_fixed_t;
 
 static pr_fixed_t controlador;
-
 static XTmrCtr Timer;
-
-/* Tabla de referencia: solo 1600 bytes */
-
 static s16 seno_q15[N_SENO];
 
-/* ===========================================================
-   ESTADO GENERAL
-   =========================================================== */
-
 static volatile u32 interrupciones = 0;
-
 static volatile u8 control_activo = 0;
 static volatile u8 falla_corriente = 0;
-
 static volatile u8 estres_activo = 0;
 static volatile u8 estres_terminado = 0;
 static volatile u8 estres_abortado = 0;
 static volatile u8 fase_estres = 0;
 
-/* ===========================================================
-   ESTADISTICAS DE ESTRES
-   =========================================================== */
-
-static volatile u32 muestras_fase[3] = {
-    0, 0, 0
-};
-
-static volatile u32 max_ciclos[5] = {
-    0, 0, 0, 0, 0
-};
-
-static volatile u32 max_lat_y_ciclos[5] = {
-    0, 0, 0, 0, 0
-};
+static volatile u32 muestras_fase[3] = {0, 0, 0};
+static volatile u32 max_ciclos[5] = {0, 0, 0, 0, 0};
+static volatile u32 max_lat_y_ciclos[5] = {0, 0, 0, 0, 0};
 
 static volatile u32 brechas_2700 = 0;
 static volatile u32 brechas_3750 = 0;
-
 static volatile u32 intervalo_min = 0xFFFFFFFFU;
 static volatile u32 intervalo_max = 0;
-
 static volatile u32 fallas_pos = 0;
 static volatile u32 fallas_neg = 0;
 static volatile u32 muestras_totales = 0;
 
 static u32 entrada_anterior = 0;
-
 static u32 k_ref = 0;
 static s32 amplitud_mA = 200;
-
-/* ===========================================================
-   CONTADOR DE CICLOS
-   =========================================================== */
 
 static inline u32 leer_mcycle(void)
 {
@@ -151,29 +81,13 @@ static inline u32 leer_mcycle(void)
     return v;
 }
 
-/* ===========================================================
-   REINICIAR PR
-   =========================================================== */
-
 static inline void pr_fijo_reiniciar(void)
 {
     controlador.e1 = 0;
     controlador.e2 = 0;
-
     controlador.u1 = 0;
     controlador.u2 = 0;
 }
-
-/* ===========================================================
-   PR EN PUNTO FIJO
-
-   No hay operaciones flotantes.
-
-   Los productos grandes se acumulan en 64 bits
-   para evitar desbordamiento.
-
-   La salida es directamente Q15 para el PWM.
-   =========================================================== */
 
 static inline __attribute__((always_inline)) s16
 pr_fijo_actualizar(s32 error_mA)
@@ -190,8 +104,6 @@ pr_fijo_actualizar(s32 error_mA)
 
     int64_t u = acc >> 24;
 
-    /* Saturacion */
-
     if (u > UMAX_Q15)
     {
         u = UMAX_Q15;
@@ -202,25 +114,13 @@ pr_fijo_actualizar(s32 error_mA)
         u = -UMAX_Q15;
     }
 
-    /* Actualizar estados */
-
     controlador.e2 = controlador.e1;
     controlador.e1 = error_mA;
-
     controlador.u2 = controlador.u1;
     controlador.u1 = (s32)u;
 
-    /* Salida Q15 con signo */
-
     return (s16)(((s32)u) >> 15);
 }
-
-/* ===========================================================
-   TABLA SINUSOIDAL
-
-   Las operaciones float se ejecutan solamente
-   durante la inicializacion.
-   =========================================================== */
 
 static void preparar_seno(void)
 {
@@ -243,10 +143,6 @@ static void preparar_seno(void)
     pr_fijo_reiniciar();
 }
 
-/* ===========================================================
-   INTERRUPCION DEL AXI TIMER
-   =========================================================== */
-
 void atender_timer(void *referencia, u8 numero)
 {
     (void)referencia;
@@ -261,11 +157,6 @@ void atender_timer(void *referencia, u8 numero)
 
     interrupciones++;
 
-    /* ========================================================
-       MEDICION DE LA PERIODICIDAD
-       Solo durante la prueba de estres.
-       ======================================================== */
-
     if (probando)
     {
         u32 t0 = XTmrCtr_GetValue(&Timer, 0);
@@ -274,8 +165,7 @@ void atender_timer(void *referencia, u8 numero)
 
         if (entrada_anterior != 0U)
         {
-            u32 intervalo =
-                comienzo - entrada_anterior;
+            u32 intervalo = comienzo - entrada_anterior;
 
             if (intervalo < intervalo_min)
             {
@@ -301,26 +191,18 @@ void atender_timer(void *referencia, u8 numero)
         entrada_anterior = comienzo;
     }
 
-    /* ========================================================
-       RUTA COMUN:
-       CONTROL NORMAL + PRUEBA DE ESTRES
-       ======================================================== */
-
     if (control_activo || probando)
     {
-        /* 1. Lectura real del XADC */
-
         s32 i_mA =
             SIGNO_SENSOR *
             xadc_a_miliamperios(
                 xadc_leer_codigo()
             );
 
-        /* ====================================================
-           FALLAS SIMULADAS
-
-           Solamente durante el diagnostico.
-           ==================================================== */
+        if (probando && fase < 3U)
+        {
+            i_mA = 0;
+        }
 
         if (probando && fase == 3U)
         {
@@ -331,10 +213,6 @@ void atender_timer(void *referencia, u8 numero)
         {
             i_mA = -1601;
         }
-
-        /* ====================================================
-           2. PROTECCION POR SOBRECORRIENTE
-           ==================================================== */
 
         if (i_mA > I_MAX_MA || i_mA < -I_MAX_MA)
         {
@@ -367,52 +245,23 @@ void atender_timer(void *referencia, u8 numero)
         }
         else
         {
-            /* =================================================
-               3. REFERENCIA SINUSOIDAL EN mA
-
-               Una multiplicacion entera y un desplazamiento.
-               ================================================= */
-
             s32 ref_mA =
                 (amplitud_mA *
-                 (s32)seno_q15[k_ref]) >> 15;
+                (s32)seno_q15[k_ref]) >> 15;
 
             if (++k_ref >= N_SENO)
             {
                 k_ref = 0;
             }
 
-            /* =================================================
-               4. BUFFER
+            buffer_guardar((s16)i_mA, 0);
 
-               Guardar una muestra por interrupcion.
-               Ts = 25 us.
-               ================================================= */
-
-            buffer_guardar(
-                (s16)i_mA,
-                0
-            );
-
-            /* =================================================
-               5. CONTROLADOR PR EN PUNTO FIJO
-               ================================================= */
-
-            s16 ref_pwm = pr_fijo_actualizar(
-                ref_mA - i_mA
-            );
-
-            /* =================================================
-               6. ESCRITURA DIRECTA PWM Q15
-               ================================================= */
+            s16 ref_pwm =
+                pr_fijo_actualizar(ref_mA - i_mA);
 
             pwm_set_ref(ref_pwm);
         }
     }
-
-    /* ========================================================
-       CONTROL DE ETAPAS DEL ESTRES
-       ======================================================== */
 
     if (probando)
     {
@@ -450,15 +299,7 @@ void atender_timer(void *referencia, u8 numero)
             }
         }
 
-        /* ====================================================
-           MEDICION FINAL CON MCYCLE
-
-           No depende del reinicio del AXI Timer.
-           ==================================================== */
-
-        u32 duracion =
-            leer_mcycle() - comienzo;
-
+        u32 duracion = leer_mcycle() - comienzo;
         u32 total = latencia + duracion;
 
         if (duracion > max_ciclos[fase])
@@ -472,10 +313,6 @@ void atender_timer(void *referencia, u8 numero)
         }
     }
 }
-
-/* ===========================================================
-   DETENER
-   =========================================================== */
 
 static void detener(void)
 {
@@ -492,9 +329,65 @@ static void detener(void)
     pwm_set_ref(0);
 }
 
-/* ===========================================================
-   INICIAR ESTRES
-   =========================================================== */
+static void cambiar_frecuencia(u8 seleccion)
+{
+    u32 base = XPAR_PWM_AXI_LITE_0_BASEADDR;
+    u32 ctrl = Xil_In32(base + PWM_REG_CTRL);
+
+    if (estres_activo ||
+        estres_terminado ||
+        control_activo ||
+        (ctrl & PWM_CTRL_ENABLE) ||
+        pwm_esta_corriendo())
+    {
+        xil_printf(
+            "Cambio rechazado: detener PWM primero con x\r\n"
+        );
+        return;
+    }
+
+    if (pwm_configurar(seleccion, TIEMPO_MUERTO_NS) != 0)
+    {
+        xil_printf("ERROR al configurar frecuencia\r\n");
+        return;
+    }
+
+    pwm_set_ref(0);
+
+    ctrl = Xil_In32(base + PWM_REG_CTRL);
+
+    xil_printf("\r\n=== CONFIGURACION PWM ===\r\n");
+
+    if (seleccion == 0U)
+    {
+        xil_printf("Frecuencia seleccionada: 10 kHz\r\n");
+    }
+    else if (seleccion == 1U)
+    {
+        xil_printf("Frecuencia seleccionada: 12.5 kHz\r\n");
+    }
+    else
+    {
+        xil_printf("Frecuencia seleccionada: 20 kHz\r\n");
+    }
+
+    xil_printf(
+        "CTRL=0x%08X\r\n",
+        (unsigned)ctrl
+    );
+
+    xil_printf(
+        "Tiempo muerto: %u ns\r\n",
+        (unsigned)TIEMPO_MUERTO_NS
+    );
+
+    xil_printf(
+        "PWM run=%d\r\n",
+        pwm_esta_corriendo()
+    );
+
+    xil_printf("=========================\r\n");
+}
 
 static void iniciar_estres(void)
 {
@@ -506,7 +399,6 @@ static void iniciar_estres(void)
         xil_printf(
             "Prueba ocupada o PWM habilitado\r\n"
         );
-
         return;
     }
 
@@ -560,12 +452,12 @@ static void iniciar_estres(void)
         "PWM apagado\r\n"
     );
 
+    xil_printf(
+        "MODO PR: corriente simulada, sin sensor fisico\r\n"
+    );
+
     estres_activo = 1U;
 }
-
-/* ===========================================================
-   MOSTRAR RESULTADOS
-   =========================================================== */
 
 static void mostrar_estres(void)
 {
@@ -625,16 +517,10 @@ static void mostrar_estres(void)
         pwm_esta_corriendo()
     );
 
-    xil_printf(
-        "=== FIN ESTRES ===\r\n"
-    );
+    xil_printf("=== FIN ESTRES ===\r\n");
 
     pr_fijo_reiniciar();
 }
-
-/* ===========================================================
-   EXPORTAR BUFFER
-   =========================================================== */
 
 static void exportar_buffer(void)
 {
@@ -643,7 +529,6 @@ static void exportar_buffer(void)
         xil_printf(
             "No exportar durante control/estres\r\n"
         );
-
         return;
     }
 
@@ -668,14 +553,224 @@ static void exportar_buffer(void)
         );
     }
 
-    xil_printf("# FIN\r\n");
+    xil_printf(
+        "# FIN muestras_enviadas=%u Ts_us=25\r\n",
+        (unsigned)n
+    );
 
     buffer_congelar(0);
 }
 
-/* ===========================================================
-   COMANDOS UART
-   =========================================================== */
+static void mostrar_diagnostico(void)
+{
+    if (estres_activo)
+    {
+        xil_printf(
+            "Diagnostico no disponible durante estres\r\n"
+        );
+        return;
+    }
+
+    u32 base = XPAR_PWM_AXI_LITE_0_BASEADDR;
+
+    u32 ctrl = Xil_In32(base + PWM_REG_CTRL);
+    u32 ref = Xil_In32(base + PWM_REG_REF);
+    u32 dead = Xil_In32(base + PWM_REG_DEAD);
+    u32 stat = Xil_In32(base + PWM_REG_STAT);
+
+    u32 freq = (ctrl >> 1U) & 0x3U;
+
+    u32 max_total = 0;
+
+    for (u32 i = 0; i < 3U; ++i)
+    {
+        if (max_lat_y_ciclos[i] > max_total)
+        {
+            max_total = max_lat_y_ciclos[i];
+        }
+    }
+
+    xil_printf("\r\n");
+    xil_printf("========================================\r\n");
+    xil_printf("       DIAGNOSTICO DIGITAL EL3313\r\n");
+    xil_printf("========================================\r\n");
+
+    xil_printf("\r\n[ MICRO BLAZE V ]\r\n");
+    xil_printf("Estado: EJECUTANDO\r\n");
+    xil_printf("Timer configurado: 40 kHz\r\n");
+    xil_printf("Periodo nominal: 25 us\r\n");
+
+    xil_printf(
+        "Interrupciones: %u\r\n",
+        (unsigned)interrupciones
+    );
+
+    xil_printf("\r\n[ PWM AXI4-LITE ]\r\n");
+
+    xil_printf(
+        "CTRL: 0x%08X\r\n",
+        (unsigned)ctrl
+    );
+
+    xil_printf(
+        "Habilitado: %u\r\n",
+        (unsigned)((ctrl & PWM_CTRL_ENABLE) ? 1U : 0U)
+    );
+
+    xil_printf(
+        "Running: %u\r\n",
+        (unsigned)((ctrl & PWM_CTRL_RUNNING) ? 1U : 0U)
+    );
+
+    if (freq == 0U)
+    {
+        xil_printf(
+            "Frecuencia seleccionada: 10 kHz\r\n"
+        );
+    }
+    else if (freq == 1U)
+    {
+        xil_printf(
+            "Frecuencia seleccionada: 12.5 kHz\r\n"
+        );
+    }
+    else if (freq == 2U)
+    {
+        xil_printf(
+            "Frecuencia seleccionada: 20 kHz\r\n"
+        );
+    }
+    else
+    {
+        xil_printf(
+            "Frecuencia seleccionada: INVALIDA\r\n"
+        );
+    }
+
+    xil_printf(
+        "Tiempo muerto: %u ciclos (%u ns)\r\n",
+        (unsigned)dead,
+        (unsigned)(dead * 10U)
+    );
+
+    xil_printf(
+        "Referencia Q15: %d\r\n",
+        (int)(s16)(ref & 0xFFFFU)
+    );
+
+    xil_printf(
+        "Falla enclavada: %u\r\n",
+        (unsigned)((stat & PWM_STAT_LATCHED) ? 1U : 0U)
+    );
+
+    xil_printf(
+        "Entrada de falla: %u\r\n",
+        (unsigned)((stat & PWM_STAT_FAULT_IN) ? 1U : 0U)
+    );
+
+    xil_printf("\r\n[ CONTROLADOR PR ]\r\n");
+    xil_printf("Implementacion: Q24, 50 Hz\r\n");
+
+#if PR_CONFIGURADO
+    xil_printf("Lazo cerrado: HABILITABLE\r\n");
+#else
+    xil_printf("Lazo cerrado: BLOQUEADO\r\n");
+#endif
+
+    xil_printf(
+        "Control activo: %u\r\n",
+        (unsigned)control_activo
+    );
+
+    if (muestras_totales == 0U)
+    {
+        xil_printf("Prueba PR: NO EJECUTADA\r\n");
+    }
+    else if (estres_abortado != 0U)
+    {
+        xil_printf("Prueba PR: ABORTADA\r\n");
+    }
+    else if (muestras_fase[0] == MUESTRAS_ETAPA &&
+             muestras_fase[1] == MUESTRAS_ETAPA &&
+             muestras_fase[2] == MUESTRAS_ETAPA &&
+             fallas_pos > 0U &&
+             fallas_neg > 0U)
+    {
+        xil_printf("Prueba PR: COMPLETADA\r\n");
+    }
+    else
+    {
+        xil_printf("Prueba PR: INCOMPLETA\r\n");
+    }
+
+    xil_printf(
+        "Muestras procesadas: %u\r\n",
+        (unsigned)muestras_totales
+    );
+
+    xil_printf(
+        "Etapas: %u / %u / %u\r\n",
+        (unsigned)muestras_fase[0],
+        (unsigned)muestras_fase[1],
+        (unsigned)muestras_fase[2]
+    );
+
+    if (max_total != 0U)
+    {
+        xil_printf(
+            "Max latencia + callback: %u ciclos\r\n",
+            (unsigned)max_total
+        );
+
+        xil_printf(
+            "Presupuesto temporal: %u ciclos\r\n",
+            (unsigned)CICLOS_PERIODO
+        );
+
+        if (intervalo_min != 0xFFFFFFFFU)
+        {
+            xil_printf(
+                "Intervalos min/max: %u / %u ciclos\r\n",
+                (unsigned)intervalo_min,
+                (unsigned)intervalo_max
+            );
+        }
+    }
+    else
+    {
+        xil_printf("Rendimiento PR: NO MEDIDO\r\n");
+    }
+
+    xil_printf(
+        "\r\n[ PROTECCIONES SIMULADAS ]\r\n"
+    );
+
+    xil_printf(
+        "Sobrecorriente positiva: %u\r\n",
+        (unsigned)fallas_pos
+    );
+
+    xil_printf(
+        "Sobrecorriente negativa: %u\r\n",
+        (unsigned)fallas_neg
+    );
+
+    xil_printf("\r\n[ ADQUISICION Y DATOS ]\r\n");
+    xil_printf("XADC: INICIALIZADO\r\n");
+    xil_printf("Medicion fisica: NO VALIDADA\r\n");
+
+    xil_printf(
+        "Buffer: %u / %u muestras\r\n",
+        (unsigned)buffer_cantidad(),
+        (unsigned)N_BUF
+    );
+
+    xil_printf("UART: OPERATIVA\r\n");
+
+    xil_printf("\r\n========================================\r\n");
+    xil_printf("          FIN DIAGNOSTICO\r\n");
+    xil_printf("========================================\r\n");
+}
 
 static void procesar_uart(void)
 {
@@ -692,13 +787,10 @@ static void procesar_uart(void)
         case 's':
         {
 #if !PR_CONFIGURADO
-
             xil_printf(
                 "No se inicia: PR_CONFIGURADO=0\r\n"
             );
-
 #else
-
             if (!estres_activo &&
                 !control_activo &&
                 !pwm_esta_corriendo())
@@ -709,17 +801,14 @@ static void procesar_uart(void)
                 (void)xadc_calibrar_offset(200);
 
                 pr_fijo_reiniciar();
-
                 k_ref = 0;
 
                 buffer_congelar(0);
                 buffer_reiniciar();
 
                 pwm_habilitar();
-
                 control_activo = 1U;
             }
-
 #endif
             break;
         }
@@ -727,9 +816,31 @@ static void procesar_uart(void)
         case 'x':
         {
             detener();
-
             xil_printf("Detenido\r\n");
+            break;
+        }
 
+        case 'a':
+        {
+            cambiar_frecuencia(0U);
+            break;
+        }
+
+        case 'b':
+        {
+            cambiar_frecuencia(1U);
+            break;
+        }
+
+        case 'd':
+        {
+            cambiar_frecuencia(2U);
+            break;
+        }
+
+        case 'v':
+        {
+            mostrar_diagnostico();
             break;
         }
 
@@ -747,7 +858,6 @@ static void procesar_uart(void)
                     (unsigned)offset
                 );
             }
-
             break;
         }
 
@@ -756,15 +866,20 @@ static void procesar_uart(void)
             if (!estres_activo && !control_activo)
             {
                 u16 cod = xadc_leer_codigo();
-                u32 voltaje_uV = ((u32)cod * 1000000U) / 4096U;
 
-                xil_printf("cod=%u | V=%u uV | I=%d mA\r\n",
-                           (unsigned)cod,
-                           (unsigned)voltaje_uV,
-                           (int)xadc_a_miliamperios(cod));
+                u32 voltaje_uV =
+                    ((u32)cod * 1000000U) / 4096U;
+
+                xil_printf(
+                    "cod=%u | V=%u uV | I=%d mA\r\n",
+                    (unsigned)cod,
+                    (unsigned)voltaje_uV,
+                    (int)xadc_a_miliamperios(cod)
+                );
             }
             break;
         }
+
         case 'e':
         {
             exportar_buffer();
@@ -776,34 +891,45 @@ static void procesar_uart(void)
             iniciar_estres();
             break;
         }
-    case 'p':
-{
-    if (!estres_activo && !control_activo)
-    {
-        pwm_deshabilitar();
-        pwm_set_ref(8000);
-        pwm_habilitar();
-        xil_printf("CTRL=0x%08X\r\n",
-           Xil_In32(XPAR_PWM_AXI_LITE_0_BASEADDR));
-        xil_printf("p: run=%d est=0x%X\r\n",
-                   pwm_esta_corriendo(),
-                   (unsigned)pwm_leer_estado());
-    }
-    else
-    {
-        xil_printf("p ignorado: estres=%u ctrl=%u\r\n",
-                   (unsigned)estres_activo,
-                   (unsigned)control_activo);
-    }
-    break;
-}
+
+        case 'p':
+        {
+            if (!estres_activo && !control_activo)
+            {
+                pwm_deshabilitar();
+                pwm_set_ref(8000);
+                pwm_habilitar();
+
+                xil_printf(
+                    "CTRL=0x%08X\r\n",
+                    (unsigned)Xil_In32(
+                        XPAR_PWM_AXI_LITE_0_BASEADDR
+                    )
+                );
+
+                xil_printf(
+                    "p: run=%d est=0x%X\r\n",
+                    pwm_esta_corriendo(),
+                    (unsigned)pwm_leer_estado()
+                );
+            }
+            else
+            {
+                xil_printf(
+                    "p ignorado: estres=%u ctrl=%u\r\n",
+                    (unsigned)estres_activo,
+                    (unsigned)control_activo
+                );
+            }
+            break;
+        }
+
         case '1':
         {
             if (!estres_activo)
             {
                 amplitud_mA = 200;
             }
-
             break;
         }
 
@@ -813,7 +939,6 @@ static void procesar_uart(void)
             {
                 amplitud_mA = 500;
             }
-
             break;
         }
 
@@ -823,7 +948,6 @@ static void procesar_uart(void)
             {
                 amplitud_mA = 1000;
             }
-
             break;
         }
 
@@ -832,32 +956,47 @@ static void procesar_uart(void)
             if (!estres_activo && !control_activo)
             {
                 u32 suma = 0;
-                u16 mn = 0xFFFF, mx = 0;
-                for (u32 k = 0; k < 1000; k++)
+                u16 mn = 0xFFFF;
+                u16 mx = 0;
+
+                for (u32 k = 0; k < 1000; ++k)
                 {
-                    u16 c = xadc_leer_codigo();
-                    suma += c;
-                    if (c < mn) mn = c;
-                    if (c > mx) mx = c;
+                    u16 cod = xadc_leer_codigo();
+
+                    suma += cod;
+
+                    if (cod < mn)
+                    {
+                        mn = cod;
+                    }
+
+                    if (cod > mx)
+                    {
+                        mx = cod;
+                    }
+
                     usleep(200);
                 }
-                u32 media = suma / 1000;
-                xil_printf("media=%u min=%u max=%u  (~%u uV)\r\n",
-                        (unsigned)media, (unsigned)mn,
-                        (unsigned)mx, (unsigned)(media * 244U));
+
+                u32 media = suma / 1000U;
+
+                xil_printf(
+                    "media=%u min=%u max=%u (~%u uV)\r\n",
+                    (unsigned)media,
+                    (unsigned)mn,
+                    (unsigned)mx,
+                    (unsigned)(media * 244U)
+                );
             }
             break;
         }
+
         default:
         {
             break;
         }
     }
 }
-
-/* ===========================================================
-   INICIALIZACION DEL SISTEMA
-   =========================================================== */
 
 static int inicializar_sistema(void)
 {
@@ -904,18 +1043,12 @@ static int inicializar_sistema(void)
         TIMER_RESET_VALUE
     );
 
-    /* GPIO */
-
     gpio_init(XPAR_AXI_GPIO_0_BASEADDR);
-
-    /* XADC */
 
     if (xadc_init() != 0)
     {
         return XST_FAILURE;
     }
-
-    /* PWM */
 
     pwm_init(XPAR_PWM_AXI_LITE_0_BASEADDR);
     pwm_deshabilitar();
@@ -929,21 +1062,12 @@ static int inicializar_sistema(void)
     }
 
     pwm_set_ref(0);
-
-    /* Preparar PR y tabla sinusoidal */
-
     preparar_seno();
-
-    /* Iniciar temporizador */
 
     XTmrCtr_Start(&Timer, 0);
 
     return XST_SUCCESS;
 }
-
-/* ===========================================================
-   MAIN
-   =========================================================== */
 
 int main(void)
 {
@@ -953,16 +1077,17 @@ int main(void)
 
     if (inicializar_sistema() != XST_SUCCESS)
     {
-        xil_printf(
-            "ERROR inicializacion\r\n"
-        );
-
+        xil_printf("ERROR inicializacion\r\n");
         return -1;
     }
 
     xil_printf(
-        "c=calibrar i=corriente n=estres "
-        "x=detener e=exportar s=bloqueado\r\n"
+        "a=10k b=12.5k d=20k p=PWM x=detener\r\n"
+    );
+
+    xil_printf(
+        "n=estres v=diagnostico e=exportar "
+        "c=calibrar i=corriente s=bloqueado\r\n"
     );
 
     u32 ultimo = 0;
@@ -970,8 +1095,6 @@ int main(void)
 
     while (1)
     {
-        /* Estado PWM */
-
         u32 estado = pwm_leer_estado();
 
         if (estres_activo &&
@@ -990,32 +1113,19 @@ int main(void)
             (estado & PWM_STAT_LATCHED))
         {
             detener();
-
-            xil_printf(
-                "FALLA PWM\r\n"
-            );
+            xil_printf("FALLA PWM\r\n");
         }
 
         if (falla_corriente)
         {
             falla_corriente = 0;
-
-            xil_printf(
-                "SOBRECORRIENTE\r\n"
-            );
+            xil_printf("SOBRECORRIENTE\r\n");
         }
-
-        /* Comandos */
 
         procesar_uart();
 
-        /* Botones */
-
-        u32 botones =
-            gpio_leer_botones() & 0x0FU;
-
-        u32 nuevos =
-            botones & ~botones_previos;
+        u32 botones = gpio_leer_botones() & 0x0FU;
+        u32 nuevos = botones & ~botones_previos;
 
         botones_previos = botones;
 
@@ -1028,14 +1138,10 @@ int main(void)
             exportar_buffer();
         }
 
-        /* Resultados */
-
         if (estres_terminado)
         {
             mostrar_estres();
         }
-
-        /* Estadisticas solo fuera del estres */
 
         u32 actual = interrupciones;
 
