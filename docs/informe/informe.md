@@ -671,7 +671,11 @@ Las figuras son vistas generales y su escala de cientos de microsegundos no perm
 ![Salidas PWM y disparo de muestreo](figuras-informe/pwm_tb-sim_segundo.png)
 
 
-En CH1 y CH2 las dos ramas conmutan entre 0 y unos 12 V, con anchos de pulso similares (ciclo cercano al 50 %). En esa condición la modulación unipolar da d_A ≈ d_B, por lo que la tensión media V_AB = Vdc · (d_A − d_B) es cercana a cero, que es lo que muestra la traza roja. Esta captura corresponde entonces a referencia nula o muy pequeña. Las espigas visibles en los flancos tienen tres causas probables: el desfase entre los flancos de ambas ramas (tiempo muerto y retardos de los drivers), las oscilaciones propias de la conmutación de una carga inductiva y el acoplamiento por las puntas de prueba. La Figura 1 no muestra los tres niveles (+12 V, 0, −12 V) característicos de la modulación unipolar con corriente circulando; para evidenciarlo hace falta una captura con referencia no nula y una escala de 20 a 50 µs/div.
+
+
+A continuación se muestran los resultados finales, los cuales corresponden al voltaje entre las ramas A y B mostrado en la figura 3 y la salida senosoidal en la resistencia de carga en las figura 4 y 5 para una referencia de 0.2 A y 0.5 A respectivamente. 
+
+En CH1 y CH2 las dos ramas conmutan entre 0 y unos 12 V, con anchos de pulso similares (ciclo cercano al 50 %). En esa condición la modulación unipolar da d_A ≈ d_B, por lo que la tensión media V_AB = Vdc · (d_A − d_B) es cercana a cero, que es lo que muestra la traza roja. Esta captura corresponde entonces a referencia nula o muy pequeña. Las espigas visibles en los flancos tienen tres causas probables: el desfase entre los flancos de ambas ramas (tiempo muerto y retardos de los drivers), las oscilaciones propias de la conmutación de una carga inductiva y el acoplamiento por las puntas de prueba. La Figura 3 no muestra los tres niveles (+12 V, 0, −12 V) característicos de la modulación unipolar con corriente circulando; para evidenciarlo hace falta una captura con referencia no nula y una escala de 20 a 50 µs/div.
 
 Con 200 µs/div y unas 20 repeticiones de los pulsos en la pantalla, el período de conmutación es del orden de 100 µs, es decir unos 10 kHz. Debe confirmarse con los cursores y compararse con la frecuencia configurada en freq_sel.
 
