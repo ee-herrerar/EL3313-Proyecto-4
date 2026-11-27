@@ -686,13 +686,13 @@ En CH1 se observa que el ancho de los pulsos de la rama varía con una envolvent
 
 **Figura 4.** Tensión en la resistencia con referencia de 0.2 A .
 
-![Voltaje resistencia con 0.2 A](figuras-informe/voltaje_0.2)
+![Voltaje resistencia con 0.2 A](figuras-informe/voltaje_0.2.jpge)
 
 
 
 **Figura 5.** Tensión en la resistencia con referencia de 0.5 A.
 
-![Voltaje resistencia con 0.5 A](figuras-informe/voltaje_0.5)
+![Voltaje resistencia con 0.5 A](figuras-informe/voltaje_0.5.jpge)
 
 
 
