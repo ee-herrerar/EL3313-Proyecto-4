@@ -725,7 +725,7 @@ A continuación se muestran los resultados obtenidos durante las pruebas de la e
 
 **Figura 5.** Tensión de cada rama (CH1 y CH2) y tensión diferencial V_AB (rojo).
 
-![Voltaje AB](figuras-informe/voltaje_AB.jpeg)
+![Voltaje AB](figuras-informe/voltajeRL1.PNG)
 
 **Figura 6.** Tensión en la resistencia con referencia de 0,2 A.
 
