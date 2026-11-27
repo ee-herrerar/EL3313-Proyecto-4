@@ -520,8 +520,8 @@ IP de AMD configurada como 4 entradas (`push_buttons_4bits`), con driver propio 
 | BTN0 | Exporta las muestras por UART (solo en el flanco de subida) |
 | BTN1 | Parada de emergencia: llama a `control_detener()` |
 
-## Resultados
 
+## Resultados
 
 ### Validación de MicroBlaze V, AXI Timer y UART
 
@@ -529,7 +529,7 @@ Se realizaron pruebas funcionales sobre la tarjeta Basys 3 para comprobar la eje
 
 Inicialmente, se verificó la ejecución de un programa desarrollado en C mediante Vitis 2026.1. La aplicación transmitió correctamente mensajes por UART utilizando una velocidad de 115200 baudios, lo que permitió confirmar la ejecución del software y el funcionamiento de la comunicación serial.
 
-Posteriormente, se inicializó el AXI Timer y se configuró su funcionamiento mediante interrupciones periódicas. El temporizador se programó con un valor de recarga de 99999 ciclos y un reloj de 100 MHz, correspondiente a un período nominal de 1 ms.
+Posteriormente, se inicializó el AXI Timer y se configuró su funcionamiento mediante interrupciones periódicas. El temporizador se programó inicialmente con un valor de recarga de 99999 ciclos y un reloj de 100 MHz, correspondiente a un período nominal de 1 ms.
 
 Para comprobar su funcionamiento, se realizaron dos lecturas consecutivas del contador y se verificó el incremento de una variable global desde la rutina de interrupción.
 
@@ -553,8 +553,21 @@ Las lecturas del temporizador muestran una disminución del valor del contador, 
 | Lectura del contador | Exitosa |
 | Atención de interrupciones periódicas | Exitosa |
 
-Los resultados permiten comprobar el funcionamiento básico de la plataforma embebida y su capacidad para ejecutar tareas mediante interrupciones. No obstante, estas pruebas no permiten determinar el jitter ni verificar todavía la ejecución completa del controlador PR y su interacción con el XADC y el PWM.
+Los resultados permiten comprobar el funcionamiento básico de la plataforma embebida y su capacidad para ejecutar tareas mediante interrupciones.
 
+Posteriormente, para la implementación del controlador PR, se modificó la configuración del temporizador utilizando un valor de recarga de 2499 ciclos. Considerando la frecuencia de reloj de 100 MHz, se obtiene el siguiente período nominal de muestreo:
+
+$$
+T_s=\frac{2499+1}{100\times10^6}=25\ \mu s
+$$
+
+Por lo tanto, la frecuencia de ejecución del lazo de control corresponde a:
+
+$$
+f_s=\frac{1}{T_s}=40\ kHz
+$$
+
+La configuración final permite establecer una base temporal nominal para la ejecución del controlador PR. Sin embargo, las pruebas iniciales realizadas a 1 kHz no permiten determinar el jitter ni comprobar el tiempo de ejecución del algoritmo completo a 40 kHz.
 
 ### Utilización de recursos de la FPGA
 
@@ -572,8 +585,7 @@ Los resultados obtenidos se presentan en la siguiente tabla:
 
 La utilización de recursos muestra que la plataforma digital ocupa una fracción de la capacidad disponible en la FPGA. El mayor porcentaje corresponde a la memoria BRAM, con un 22 %, seguido de las LUT, con un 18,48 %.
 
-Estos resultados corresponden a la versión implementada del sistema base y no incluyen el periférico PWM personalizado, cuya integración permanece pendiente.
-
+Estos resultados corresponden a la implementación inicial del sistema base y no incluyen los recursos adicionales asociados a la integración del periférico PWM personalizado. En la versión actual del proyecto, dicho periférico ya se encuentra incorporado al Block Design junto con el XADC. No obstante, no se dispone de un reporte actualizado de utilización de recursos correspondiente al sistema integrado.
 
 ### Análisis de temporización
 
@@ -596,27 +608,29 @@ Los resultados muestran un margen positivo de 0,456 ns para las comprobaciones d
 
 Vivado confirmó el cumplimiento de las restricciones de temporización especificadas para el diseño implementado. No obstante, el reporte también identificó tres puertos sin restricciones de retardo de entrada o salida, por lo que la verificación temporal de las interfaces externas no se considera completa.
 
-Estos resultados corresponden a la plataforma digital implementada y no incluyen la integración del periférico PWM personalizado.
-
+Estos resultados corresponden a la implementación inicial de la plataforma digital. Debido a la posterior integración del periférico PWM personalizado, resulta necesario distinguir estos valores de los correspondientes a la implementación final del sistema.
 
 ### Validación del periférico PWM mediante simulación Tcl en Vivado
 
 Para validar el módulo PWM con interfaz AXI-Lite (`pwm_axi_lite.sv`) sin depender de la interfaz gráfica ni generar archivos residuales dentro del repositorio, se ejecutó una simulación comportamental en **Vivado 2026.1** utilizando la consola Tcl mediante los siguientes pasos:
 
 #### 1. Creación de un proyecto temporal
+
 Se generó un proyecto limpio dentro de la carpeta temporal del sistema operativo (`%TEMP%`) con marca de tiempo única, apuntando al dispositivo objetivo (`xc7a35tcpg236-1`):
 
 ```tcl
+set repo [pwd]
 set simdir [file join $env(TEMP) "pwm_tb_sim_[clock seconds]"]
 create_project pwm_tb_sim $simdir -part xc7a35tcpg236-1
 ```
 
 #### 2. Carga de fuentes y definición del *Top Module*
+
 Se asignaron las rutas del diseño RTL (`pwm_axi_lite.sv`) y del *testbench* (`tb_pwm_axi_lite.sv`), verificando su existencia en disco, agregándolos al conjunto de simulación (`sim_1`) y estableciendo el *testbench* como módulo principal:
 
 ```tcl
-set rtl {C:\Users\User\Documents\GitHub\EL3313-Proyecto-4\archivos-vivado\pwm\pwm_axi_lite.sv}
-set tb  {C:\Users\User\Documents\GitHub\EL3313-Proyecto-4\archivos-vivado\pwm\tb_pwm_axi_lite.sv}
+set rtl [file join $repo archivos-vivado pwm pwm_axi_lite.sv]
+set tb [file join $repo archivos-vivado pwm tb_pwm_axi_lite.sv]
 
 add_files -fileset sim_1 -norecurse [list $rtl $tb]
 set_property top tb_pwm_axi_lite [get_filesets sim_1]
@@ -624,6 +638,7 @@ update_compile_order -fileset sim_1
 ```
 
 #### 3. Compilación, elaboración y ejecución (XSim)
+
 Se lanzó la simulación comportamental (`launch_simulation`), proceso en el cual Vivado compiló (`xvlog`) los módulos `pwm_axi_lite`, `deadtime_leg` y `tb_pwm_axi_lite`, elaboró el *snapshot* (`xelab`) y ejecutó los primeros `1000 ns` por defecto. Posteriormente, se corrió la simulación completa hasta encontrar la instrucción `$finish`:
 
 ```tcl
@@ -632,87 +647,356 @@ run all
 ```
 
 #### 4. Resultados de la verificación
-La simulación finalizó exitosamente en `665530 ns` superando todas las aserciones del *testbench*:
 
-* **Validación de frecuencias de salida:**
-  * Periodo de `10000` ciclos -> `10.0 kHz` (**PASS**)
-  * Periodo de `8000` ciclos -> `12.5 kHz` (**PASS**)
-  * Periodo de `5000` ciclos -> `20.0 kHz` (**PASS**)
-* **Integridad y tiempos muertos:** Se completaron **18 operaciones/verificaciones** de lectura/escritura AXI-Lite y conmutación sin detectar condiciones de *shoot-through*.
+La ejecución documentada de la simulación finalizó exitosamente en `665530 ns`, reportando resultados satisfactorios para las siguientes frecuencias de conmutación:
 
-### Validación del periférico PWM mediante mediciones con el osciloscopio
-Se realizaron mediciones de laboratorio para el periférico PWM con una frecuencias de conmutación de fsw = 20kHz y con el tiempo muerto configurado en 200ns (ambos valores podrían adaptarse mas adelante). En la siguiente imagen se muestran las señales complementarias que van al driver para encender el MOSFET superior y el inferior del inversor en determinados momentos. Las sondas del osciloscopio están configuradas a x10 para esta medición. 
+| Frecuencia configurada | Período esperado | Período en ciclos | Resultado |
+|---|---:|---:|---|
+| 10 kHz | 100 µs | 10000 | PASS |
+| 12,5 kHz | 80 µs | 8000 | PASS |
+| 20 kHz | 50 µs | 5000 | PASS |
 
-![Circuito PWM](./figuras-informe/onda_osciloscopio(1).PNG)
+Durante esta ejecución se reportaron 18 operaciones y verificaciones de lectura y escritura AXI-Lite y conmutación, sin detectar condiciones de *shoot-through*.
 
-Se usaron los cursores del osciloscopio para medir el tiempo muerto, se puede observar en la diferencia entre los cursores que este corresponde al valor configurado de 200ns. 
+Adicionalmente, el testbench incluido en el repositorio contempla comprobaciones automáticas para diferentes condiciones de operación del periférico. Estas comprobaciones permiten determinar si el comportamiento obtenido coincide con el esperado, sin depender únicamente de la inspección visual de las señales.
 
-![Circuito PWM](./figuras-informe/medicion_cursor.PNG)
+| Prueba | Criterio de aceptación |
+|---|---|
+| Reset del sistema | Registros inicializados y salidas deshabilitadas. |
+| Lectura y escritura AXI4-Lite | Los registros responden correctamente a las operaciones realizadas. |
+| Escrituras parciales | Se modifican únicamente los bytes seleccionados mediante WSTRB. |
+| Selección de frecuencia | El período generado corresponde a la frecuencia configurada. |
+| Selector de frecuencia inválido | Se rechaza la configuración reservada. |
+| Saturación de referencia | La referencia permanece dentro del rango permitido. |
+| Tiempo muerto | Las señales de una misma rama no permanecen activas simultáneamente. |
+| Modulación unipolar | La tensión diferencial corresponde a la polaridad de la referencia. |
+| Protección por falla | Las cuatro señales de compuerta se deshabilitan. |
+| Recuperación de falla | El PWM no se habilita automáticamente después de retirar la falla. |
 
+En caso de incumplimiento de las condiciones verificadas, el testbench utiliza la instrucción `$fatal` para reportar el error y detener la simulación.
 
-## Analisis e interpretacion de resultados
+Es importante señalar que los resultados de frecuencia presentados corresponden a la versión inicial del periférico. La versión empaquetada utilizada en el Block Design presenta una modificación en la tercera frecuencia de conmutación, pasando de 20 kHz a 40 kHz.
 
-Las Figuras 1 y 2 muestran la vista general de la simulación comportamental del periférico PWM. La primera captura agrupa el reloj, el reset y las transacciones AXI4-Lite; la segunda presenta la falla, las cuatro salidas de compuerta, el disparo `trig` y las señales del monitor del *testbench*.
+| Selector de frecuencia | Versión inicial | IP empaquetada |
+|---|---:|---:|
+| 00 | 10 kHz | 10 kHz |
+| 01 | 12,5 kHz | 12,5 kHz |
+| 10 | 20 kHz | 40 kHz |
 
-En la Figura 1 se observa que el registro de control, dirección `0x00`, recibe los valores `0x00000001`, `0x00000003` y `0x00000005`. Estos corresponden a habilitar el PWM y seleccionar, en secuencia, los tres casos de frecuencia probados. Las respuestas AXI muestran `OKAY` (`0`) y la lectura de control devuelve `0x00000009`: `running` y `enable` activos con el selector de frecuencia en `00`. Esto es consistente con la secuencia de configuración del *testbench*.
+Por lo tanto, los resultados obtenidos mediante la simulación inicial permiten validar el comportamiento del periférico bajo las condiciones evaluadas, pero no constituyen una verificación directa de la configuración posterior a 40 kHz.
 
-En la Figura 2, `ah/al` y `bh/bl` conmutan en pares complementarios. El disparo `trig` aparece una vez por período; al cambiar la selección de frecuencia, los intervalos entre disparos se reducen, de acuerdo con los períodos de 100, 80 y 50 microsegundos (10, 12,5 y 20 kHz). La entrada `fault` permanece inactiva en el tramo mostrado. La referencia usada en la prueba se fija en cero antes de habilitar el PWM, por lo que las dos ramas muestran patrones coincidentes.
-
-En el instante inicial de las capturas, algunos valores se muestran como `X`. Esto corresponde al estado previo a que el reset síncrono sea muestreado por el primer flanco de reloj; no significa que las señales permanezcan indefinidas durante la operación. Después de la inicialización se observan valores definidos y la simulación concluye con los mensajes `PASS` del *testbench*.
-
-Las figuras son vistas generales y su escala de cientos de microsegundos no permite resolver visualmente el tiempo muerto, programado en cinco ciclos (50 ns a 100 MHz) en la prueba. El valor activo se actualiza al límite de período. La comprobación de ausencia de *shoot-through* y del intervalo mínimo se respalda en las aserciones del *testbench*, no en la resolución de estas capturas. En conjunto con los períodos medidos de 10 000, 8 000 y 5 000 ciclos y las 18 operaciones/verificaciones reportadas, los resultados validan el comportamiento funcional cubierto para el periférico aislado; no verifican su integración con MicroBlaze, XADC, AXI Timer ni el inversor físico.
-
-**Figura 1.** Transacciones AXI4-Lite durante la prueba del periferico PWM.
+**Figura 1.** Transacciones AXI4-Lite durante la prueba del periférico PWM.
 
 ![Transacciones AXI4-Lite y control del PWM](figuras-informe/pwm_tb-sim_primero.png)
 
-**Figura 2.** Salidas de compuerta, disparo PWM y señales del monitor del *testbench*.
+**Figura 2.** Salidas de compuerta, disparo PWM y señales del monitor del testbench.
 
 ![Salidas PWM y disparo de muestreo](figuras-informe/pwm_tb-sim_segundo.png)
 
+### Validación del periférico PWM mediante mediciones con el osciloscopio
 
+Se realizaron mediciones de laboratorio para el periférico PWM con una frecuencia de conmutación de 20 kHz y un tiempo muerto configurado de 200 ns.
 
+En la Figura 3 se muestran las señales complementarias que van al driver para encender el MOSFET superior e inferior de una rama del inversor en determinados momentos. Las sondas del osciloscopio se configuraron a x10 para esta medición.
 
-A continuación se muestran los resultados finales, los cuales corresponden al voltaje entre las ramas A y B mostrado en la figura 3 y la salida senosoidal en la resistencia de carga en las figura 4 y 5 para una referencia de 0.2 A y 0.5 A respectivamente. 
+**Figura 3.** Señales complementarias del periférico PWM medidas mediante el osciloscopio.
 
-En CH1 y CH2 las dos ramas conmutan entre 0 y unos 12 V, con anchos de pulso similares (ciclo cercano al 50 %). En esa condición la modulación unipolar da d_A ≈ d_B, por lo que la tensión media V_AB = Vdc · (d_A − d_B) es cercana a cero, que es lo que muestra la traza roja. Esta captura corresponde entonces a referencia nula o muy pequeña. Las espigas visibles en los flancos tienen tres causas probables: el desfase entre los flancos de ambas ramas (tiempo muerto y retardos de los drivers), las oscilaciones propias de la conmutación de una carga inductiva y el acoplamiento por las puntas de prueba. La Figura 3 no muestra los tres niveles (+12 V, 0, −12 V) característicos de la modulación unipolar con corriente circulando; para evidenciarlo hace falta una captura con referencia no nula y una escala de 20 a 50 µs/div.
+![Circuito PWM](./figuras-informe/onda_osciloscopio(1).PNG)
 
-Con 200 µs/div y unas 20 repeticiones de los pulsos en la pantalla, el período de conmutación es del orden de 100 µs, es decir unos 10 kHz. Debe confirmarse con los cursores y compararse con la frecuencia configurada en freq_sel.
+Se utilizaron los cursores del osciloscopio para medir el tiempo muerto entre las señales complementarias. La diferencia temporal obtenida entre ambos cursores corresponde aproximadamente a 215 ns.
 
-**Figura 3.** Tensión de cada rama (CH1, CH2) y tensión diferencial V_AB (rojo) .
+**Figura 4.** Medición del tiempo muerto mediante los cursores del osciloscopio.
+
+![Circuito PWM](./figuras-informe/medicion_cursor.PNG)
+
+Los valores configurados y medidos experimentalmente se presentan en la siguiente tabla:
+
+| Parámetro | Valor configurado | Valor experimental |
+|---|---:|---:|
+| Frecuencia de conmutación | 20 kHz | 20 kHz |
+| Período de conmutación | 50 µs | 50 µs |
+| Tiempo muerto | 200 ns | 215 ns |
+
+Los resultados muestran que la frecuencia y el período de conmutación coinciden con los valores configurados. En el caso del tiempo muerto, se presenta una diferencia de 15 ns respecto al valor programado.
+
+### Resultados de la etapa de potencia
+
+A continuación se muestran los resultados obtenidos durante las pruebas de la etapa de potencia, correspondientes a la tensión entre las ramas A y B del inversor y a la tensión reportada sobre la resistencia de carga para referencias de corriente de 0,2 A y 0,5 A.
+
+**Figura 5.** Tensión de cada rama (CH1 y CH2) y tensión diferencial V_AB (rojo).
 
 ![Voltaje AB](figuras-informe/voltaje_AB.jpeg)
 
-
-
-
-En CH1 se observa que el ancho de los pulsos de la rama varía con una envolvente de 50 Hz, y que esa modulación es más pronunciada en la Figura 4 que en la Figura 5. Esto evidencia que el PWM recibe una referencia senoidal y que su amplitud crece con la amplitud solicitada. La tensión en la resistencia, proporcional a la corriente de la carga, presenta el mismo período de aproximadamente 20 ms (50 Hz), con unos 10 períodos en la ventana de 200 ms. Esa ventana cumple el requisito de al menos cinco períodos completos para extraer la fundamental.
-
-**Figura 4.** Tensión en la resistencia con referencia de 0.2 A .
+**Figura 6.** Tensión en la resistencia con referencia de 0,2 A.
 
 ![Voltaje resistencia con 0.2 A](figuras-informe/voltaje_0.2.jpeg)
 
-
-
-**Figura 5.** Tensión en la resistencia con referencia de 0.5 A.
+**Figura 7.** Tensión en la resistencia con referencia de 0,5 A.
 
 ![Voltaje resistencia con 0.5 A](figuras-informe/voltaje_0.5.jpeg)
 
+En las Figuras 6 y 7 se observa una variación periódica de la señal, correspondiente aproximadamente a una frecuencia de 50 Hz. Asimismo, al aumentar la referencia de corriente de 0,2 A a 0,5 A, se observa un aumento en la amplitud de la tensión reportada sobre la resistencia.
 
+| Referencia de corriente pico | Corriente RMS esperada | Evidencia experimental |
+|---|---:|---|
+| 0,2 A | 0,141 A | Figura 6 |
+| 0,5 A | 0,354 A | Figura 7 |
+| 1,0 A | 0,707 A | Sin registro adjunto |
+
+Los valores RMS presentados corresponden a los valores teóricos de una señal sinusoidal ideal. No corresponden a mediciones experimentales de corriente.
+
+### Implementación final y diagnóstico temporal del controlador PR
+
+En la versión final del software embebido se incorporó la implementación del controlador PR discreto mediante operaciones en punto fijo, con el objetivo de reducir el tiempo de procesamiento dentro de la rutina de interrupción.
+
+Además, se implementó una rutina de diagnóstico que permite recorrer las operaciones del controlador para las tres amplitudes de referencia solicitadas, manteniendo el PWM deshabilitado.
+
+La configuración utilizada se presenta en la siguiente tabla:
+
+| Parámetro | Valor configurado |
+|---|---:|
+| Frecuencia de reloj | 100 MHz |
+| Frecuencia de muestreo | 40 kHz |
+| Período de muestreo | 25 µs |
+| Frecuencia de referencia | 50 Hz |
+| Amplitudes de referencia | 0,2 A, 0,5 A y 1,0 A |
+| Interrupciones por etapa de diagnóstico | 400000 |
+| Duración nominal por etapa | 10 s |
+| Capacidad del búfer circular | 1536 muestras |
+| Formato del controlador PR | Punto fijo Q24 |
+| Formato de referencia PWM | Q1.15 |
+| Tiempo muerto programado | 500 ns |
+| Límite de protección por sobrecorriente | ±1,5 A |
+
+La rutina de diagnóstico utiliza el registro `mcycle` del procesador para determinar la cantidad de ciclos de reloj utilizados durante la ejecución de la rutina de atención. Asimismo, permite registrar los intervalos entre interrupciones y evaluar las condiciones de protección mediante la inyección de fallas simuladas.
+
+La implementación permite obtener indicadores del tiempo máximo de procesamiento, la latencia de atención y la variación temporal entre interrupciones. Sin embargo, no se dispone de registros de salida de esta prueba que permitan presentar valores experimentales de dichos indicadores.
+
+La aplicación también incorpora un búfer circular para el almacenamiento de muestras de corriente y una rutina de exportación mediante UART, ejecutada fuera de la interrupción del temporizador.
+
+Estas funcionalidades corresponden a la implementación disponible en el repositorio. Su presencia en el código no implica por sí sola que se haya comprobado el cumplimiento temporal ni el funcionamiento completo del controlador en lazo cerrado.
+
+
+
+## Análisis e interpretación de resultados
+
+### Análisis de la simulación del periférico PWM
+
+Las Figuras 1 y 2 muestran la vista general de la simulación comportamental del periférico PWM. La primera captura agrupa el reloj, el reset y las transacciones AXI4-Lite; la segunda presenta la falla, las cuatro salidas de compuerta, el disparo `trig` y las señales del monitor del testbench.
+
+En la Figura 1 se observa que el registro de control, dirección `0x00`, recibe los valores `0x00000001`, `0x00000003` y `0x00000005`. Estos corresponden a habilitar el PWM y seleccionar, en secuencia, los tres casos de frecuencia probados. Las respuestas AXI muestran `OKAY` (`0`) y la lectura de control devuelve `0x00000009`, correspondiente a los bits `running` y `enable` activos con el selector de frecuencia en `00`. Esto es consistente con la secuencia de configuración del testbench.
+
+En la Figura 2, las señales `ah/al` y `bh/bl` conmutan en pares complementarios. El disparo `trig` aparece una vez por período y, al cambiar la selección de frecuencia, los intervalos entre disparos se reducen de acuerdo con los períodos de 100, 80 y 50 µs, correspondientes a las frecuencias de 10, 12,5 y 20 kHz.
+
+La entrada `fault` permanece inactiva en el tramo mostrado. La referencia utilizada en la prueba se fija en cero antes de habilitar el PWM, por lo que las dos ramas muestran patrones de conmutación coincidentes.
+
+En el instante inicial de las capturas, algunos valores se muestran como `X`. Esto corresponde al estado previo a que el reset síncrono sea muestreado por el primer flanco de reloj y no significa que las señales permanezcan indefinidas durante la operación. Después de la inicialización se observan valores definidos.
+
+Las figuras corresponden a vistas generales y su escala de cientos de microsegundos no permite resolver visualmente el tiempo muerto, programado en cinco ciclos de reloj durante la prueba. Por esta razón, la comprobación de ausencia de *shoot-through* y del intervalo mínimo entre señales complementarias se respalda mediante las comprobaciones automáticas del testbench y no únicamente mediante la inspección visual de las capturas.
+
+Los resultados obtenidos permiten validar el comportamiento funcional del periférico aislado en las condiciones evaluadas. La utilización de registros sombra permite modificar la configuración sin interrumpir el período de conmutación en curso, evitando la generación de pulsos no deseados durante la actualización de la referencia.
+
+La modificación de la tercera frecuencia de conmutación de 20 kHz a 40 kHz en la IP empaquetada implica que el período de dicha configuración se reduce de 5000 a 2500 ciclos de reloj. Por lo tanto, las pruebas correspondientes a 20 kHz deben distinguirse de las condiciones finales de operación del sistema.
+
+### Análisis de las mediciones experimentales del PWM
+
+En la Figura 3 se observa que las señales correspondientes a los transistores superior e inferior de una misma rama presentan un comportamiento complementario. El período medido de 50 µs corresponde a una frecuencia de conmutación de 20 kHz, coincidiendo con el valor configurado durante la prueba.
+
+En la Figura 4 se observa que existe un intervalo durante el cual ambas señales permanecen deshabilitadas, correspondiente al tiempo muerto implementado en el periférico.
+
+Considerando un tiempo muerto programado de 200 ns y un valor experimental de 215 ns, el error relativo corresponde a:
+
+$$
+Error=\frac{|t_{experimental}-t_{configurado}|}{t_{configurado}}\times100
+$$
+
+$$
+Error=\frac{|215-200|}{200}\times100=7,5\%
+$$
+
+Al analizar el funcionamiento del módulo `deadtime_leg`, se observa que el tiempo muerto efectivo corresponde aproximadamente a un ciclo de reloj adicional respecto al valor programado, debido a que el contador debe alcanzar cero antes de habilitar la siguiente señal.
+
+Considerando una frecuencia de reloj de 100 MHz, el período de reloj corresponde a:
+
+$$
+T_{clk}=\frac{1}{100\times10^6}=10\ ns
+$$
+
+Por lo tanto, el tiempo muerto efectivo esperado para una configuración de 20 ciclos corresponde a:
+
+$$
+t_{dead}=(20+1)\times10\ ns=210\ ns
+$$
+
+Al comparar este valor con la medición experimental, se obtiene:
+
+$$
+Error=\frac{|215-210|}{210}\times100=2,38\%
+$$
+
+| Parámetro | Valor |
+|---|---:|
+| Tiempo muerto programado | 200 ns |
+| Tiempo muerto teórico según el RTL | 210 ns |
+| Tiempo muerto experimental | 215 ns |
+| Error respecto al valor programado | 7,5 % |
+| Error respecto al comportamiento teórico del RTL | 2,38 % |
+
+La diferencia entre el valor programado y el obtenido experimentalmente puede explicarse en gran medida mediante el comportamiento del contador implementado. La diferencia restante de 5 ns puede estar relacionada con la resolución temporal de la medición, los retardos de propagación y las características de las señales medidas.
+
+Este resultado permite identificar la importancia de considerar el comportamiento temporal del hardware desarrollado, debido a que el valor efectivo del tiempo muerto no corresponde necesariamente al valor escrito en el registro de configuración.
+
+### Análisis de los resultados de la etapa de potencia
+
+En la Figura 5 se observa que las tensiones de las ramas A y B conmutan entre 0 V y aproximadamente 12 V, presentando anchos de pulso similares.
+
+Considerando el principio de funcionamiento de la modulación unipolar, la tensión promedio entre ambas ramas se encuentra dada por:
+
+$$
+\overline{V}_{AB}=V_{dc}(d_A-d_B)
+$$
+
+Debido a que los ciclos de trabajo de ambas ramas presentan valores similares, la diferencia entre estos es cercana a cero. Esto es consistente con la tensión diferencial observada en la traza roja de la Figura 5 y con una condición de referencia nula o de amplitud reducida.
+
+Los transitorios observados durante los flancos de conmutación pueden estar asociados con los retardos de los drivers, el tiempo muerto, las características inductivas de la carga y los efectos parásitos presentes en el montaje y en las sondas de medición.
+
+La Figura 5 no permite identificar completamente los tres niveles de tensión característicos de la modulación unipolar con una referencia no nula. Para realizar esta comprobación se requiere una captura bajo condiciones de operación en las cuales la diferencia entre los ciclos de trabajo de ambas ramas sea más pronunciada.
+
+En las Figuras 6 y 7 se observa una variación periódica de las señales asociadas a la etapa de potencia, con un período aproximado de 20 ms. La frecuencia correspondiente se obtiene mediante:
+
+$$
+f=\frac{1}{T}=\frac{1}{20\times10^{-3}}=50\ Hz
+$$
+
+Este resultado es consistente con la frecuencia de referencia establecida en las especificaciones del proyecto.
+
+Al comparar las Figuras 6 y 7, se observa que la amplitud de la señal correspondiente a la referencia de 0,5 A es mayor que la correspondiente a la referencia de 0,2 A. Este comportamiento es consistente con el aumento de amplitud solicitado en la referencia de corriente.
+
+Considerando que la tensión sobre una resistencia es directamente proporcional a la corriente que circula por esta, se tiene:
+
+$$
+i(t)=\frac{v_R(t)}{R}
+$$
+
+Por lo tanto, siempre que la tensión medida corresponda a los terminales de la resistencia, el aumento observado en su amplitud representa un aumento en la corriente de carga para un mismo valor de resistencia.
+
+No obstante, para determinar el error de seguimiento del controlador es necesario conocer el valor de resistencia utilizado y obtener la amplitud de la componente fundamental de la corriente medida.
+
+El error relativo de amplitud puede determinarse mediante:
+
+$$
+Error_I=\frac{|I_{medida,1}-I_{ref}|}{I_{ref}}\times100
+$$
+
+Donde:
+
+- $I_{medida,1}$ corresponde a la amplitud pico de la componente fundamental de la corriente medida.
+- $I_{ref}$ corresponde a la amplitud pico de la referencia de corriente.
+
+El enunciado establece que este error no debe superar el 10 % para las tres referencias de corriente solicitadas. A partir de este criterio se obtienen los siguientes intervalos admisibles:
+
+| Referencia | Corriente fundamental mínima | Corriente fundamental máxima |
+|---|---:|---:|
+| 0,2 A | 0,18 A | 0,22 A |
+| 0,5 A | 0,45 A | 0,55 A |
+| 1,0 A | 0,90 A | 1,10 A |
+
+Adicionalmente, el rizado de corriente de conmutación no debe superar los 0,20 A pico a pico. Este parámetro debe determinarse separando la componente fundamental y las componentes de baja frecuencia del rizado asociado a la conmutación.
+
+Las mediciones disponibles permiten observar el comportamiento de las señales del inversor y la variación de amplitud al modificar la referencia. Sin embargo, no permiten comprobar cuantitativamente el cumplimiento de los límites establecidos para el error de amplitud, el desfase y el rizado de corriente.
+
+Tampoco se dispone de registros experimentales correspondientes a la referencia de 1,0 A, a los transitorios de cambio de amplitud ni al cambio de resistencia de carga solicitado. Por lo tanto, estos ensayos no pueden considerarse validados a partir de las evidencias presentadas.
 
 ### Análisis de resultados de la plataforma digital
 
 Las pruebas realizadas sobre MicroBlaze V permitieron comprobar la ejecución de programas desarrollados en C y la comunicación con los periféricos mediante AXI. La transmisión de mensajes por UART confirmó el funcionamiento de la interfaz serial y permitió observar el estado del sistema durante las pruebas.
 
-El AXI Timer se configuró con un período nominal de 1 ms. Las lecturas del contador mostraron una disminución de su valor, consistente con el funcionamiento descendente configurado. Asimismo, el registro de 1000 interrupciones confirmó la ejecución periódica de la rutina de atención. Sin embargo, estas pruebas no permiten determinar el jitter ni comprobar la precisión temporal del sistema bajo condiciones de mayor carga de procesamiento.
+El AXI Timer se configuró inicialmente con un período nominal de 1 ms. Las lecturas del contador mostraron una disminución de su valor, consistente con el funcionamiento descendente configurado. Asimismo, el registro de 1000 interrupciones confirmó la ejecución de la rutina de atención.
 
-En cuanto a la utilización de recursos, el diseño implementado ocupó un 18,48 % de las LUT, un 7,50 % de los registros, un 22 % de la memoria BRAM y un 4,44 % de los DSP disponibles en la FPGA. Estos resultados indican que la plataforma base utiliza una fracción de los recursos del dispositivo, aunque todavía deben considerarse los recursos adicionales necesarios para integrar los módulos pendientes.
+Posteriormente, el período nominal de muestreo se redujo a 25 µs para la implementación del controlador PR discreto, aumentando la frecuencia de ejecución de las interrupciones de 1 kHz a 40 kHz.
 
-El análisis de temporización presentó un WNS de 0,456 ns y un TNS de 0 ns, sin violaciones de *setup* ni de *hold* en las rutas analizadas. Esto confirma el cumplimiento de las restricciones temporales configuradas para el diseño implementado a 100 MHz. No obstante, se identificaron tres puertos sin restricciones de retardo de entrada o salida, por lo que la verificación temporal de las interfaces externas no está completa.
+Considerando la frecuencia de operación de 100 MHz, la cantidad de ciclos de reloj disponibles entre interrupciones se obtiene mediante:
 
-Finalmente, el reporte de utilización indicó que el recurso físico XADC no fue utilizado en la implementación analizada. Este resultado requiere revisar su integración efectiva antes de considerar validada la adquisición de datos.
+$$
+N_{ciclos}=\frac{f_{clk}}{f_s}
+$$
 
-En conjunto, los resultados demuestran el funcionamiento de la plataforma embebida básica y establecen una base para continuar con la integración de los periféricos y la ejecución del controlador de corriente.
+$$
+N_{ciclos}=\frac{100\times10^6}{40\times10^3}=2500
+$$
+
+Esto implica que todas las operaciones correspondientes a la atención de la interrupción, adquisición de corriente, cálculo de la referencia, ejecución del controlador PR y actualización del PWM deben completarse dentro de un presupuesto de 2500 ciclos de reloj.
+
+La implementación del controlador mediante operaciones en punto fijo permite evitar operaciones en punto flotante dentro de la interrupción, reduciendo la carga de procesamiento asociada al algoritmo.
+
+La rutina de diagnóstico implementada permite evaluar la cantidad de ciclos utilizados por el procesador durante estas operaciones. Sin embargo, al no disponer de los resultados registrados por dicha rutina, no es posible determinar el margen temporal efectivo ni comprobar el cumplimiento del período de muestreo bajo todas las condiciones de operación.
+
+Además, la bandera `PR_CONFIGURADO` permanece deshabilitada en la versión del código incluida en el repositorio, por lo que la ejecución normal del controlador requiere completar su configuración y validación.
+
+En cuanto a la utilización de recursos, el diseño implementado inicialmente ocupó un 18,48 % de las LUT, un 7,50 % de los registros, un 22 % de la memoria BRAM y un 4,44 % de los DSP disponibles en la FPGA.
+
+Estos resultados indican que la plataforma base utiliza una fracción de los recursos del dispositivo, dejando recursos disponibles para incorporar funcionalidades adicionales. Sin embargo, los porcentajes obtenidos no corresponden al consumo total de la versión final, debido a la posterior integración de los periféricos.
+
+El análisis de temporización presentó un WNS de 0,456 ns y un WHS de 0,041 ns, sin violaciones de *setup* ni de *hold* en las rutas analizadas. Esto confirma el cumplimiento de las restricciones temporales configuradas para la implementación inicial a 100 MHz.
+
+No obstante, se identificaron tres puertos sin restricciones de retardo de entrada o salida, por lo que la verificación temporal de las interfaces externas no está completa.
+
+Es importante distinguir entre el cumplimiento de las restricciones temporales del hardware y el cumplimiento de los tiempos de ejecución del software. Un resultado positivo en el análisis de temporización de Vivado no garantiza por sí solo que todas las operaciones realizadas por MicroBlaze V se completen dentro del período de muestreo establecido.
+
+### Análisis de la adquisición y almacenamiento de muestras
+
+La incorporación del periférico XADC al Block Design permite establecer una interfaz de adquisición de corriente sincronizada mediante la señal `pwm_trigger_o`, generada por el periférico PWM.
+
+La utilización de esta señal permite definir el instante de inicio de la conversión respecto al período de conmutación. Sin embargo, el software no comprueba explícitamente la disponibilidad de una nueva conversión antes de realizar la lectura del registro del XADC.
+
+Debido a que la rutina de control se ejecuta mediante una interrupción generada por el AXI Timer, resulta necesario considerar la relación temporal entre el disparo del XADC y la ejecución de dicha interrupción. Aunque ambos periféricos operan nominalmente a la misma frecuencia en la configuración final, esto no garantiza por sí solo que la lectura corresponda a una muestra nueva.
+
+Para el almacenamiento de los datos adquiridos se implementó un búfer circular con capacidad para 1536 muestras de corriente. Considerando una frecuencia de muestreo de 40 kHz, el tiempo total de almacenamiento corresponde a:
+
+$$
+t_{buffer}=\frac{N_{muestras}}{f_s}
+$$
+
+$$
+t_{buffer}=\frac{1536}{40000}=38,4\ ms
+$$
+
+Considerando que la señal de referencia presenta una frecuencia de 50 Hz y un período de 20 ms, la cantidad de períodos almacenados corresponde a:
+
+$$
+N_{periodos}=\frac{38,4}{20}=1,92
+$$
+
+Por lo tanto, el búfer circular permite conservar aproximadamente dos períodos de la señal de corriente.
+
+El enunciado establece una ventana mínima de cinco períodos completos para determinar el error de amplitud de la componente fundamental. Para cumplir este criterio mediante el almacenamiento de muestras a 40 kHz se requiere:
+
+$$
+N_{muestras}=40000\times5\times20\times10^{-3}
+$$
+
+$$
+N_{muestras}=4000
+$$
+
+La capacidad actual del búfer permite observar el comportamiento de la corriente durante intervalos reducidos, pero no permite almacenar por sí sola una ventana de cinco períodos completos. Para realizar dicho análisis se requiere ampliar la capacidad de almacenamiento o utilizar un instrumento externo de adquisición.
+
+La exportación mediante UART se realiza fuera de la rutina de interrupción, evitando incorporar directamente los tiempos de transmisión serial al cálculo del controlador. Sin embargo, la versión actual del programa restringe la exportación de muestras a los estados en que el control y el diagnóstico se encuentran detenidos.
+
+### Limitaciones de los resultados obtenidos
+
+A partir de los resultados presentados, se identificaron las siguientes limitaciones:
+
+- Los reportes de utilización de recursos y temporización corresponden a la implementación inicial del sistema.
+- La simulación comportamental documentada corresponde a la versión del periférico PWM cuya tercera frecuencia es de 20 kHz.
+- No se dispone de una simulación temporizada post-implementación correspondiente a la versión final del periférico.
+- No se cuenta con registros de ejecución del diagnóstico temporal a 40 kHz.
+- Las mediciones de la etapa de potencia no permiten determinar cuantitativamente el error de amplitud, el desfase y el rizado de corriente.
+- La capacidad del búfer circular no permite almacenar cinco períodos completos de la señal de referencia a la frecuencia de muestreo establecida.
+
+En conjunto, los resultados obtenidos permiten comprobar el funcionamiento de la plataforma embebida básica, el comportamiento del periférico PWM en las condiciones evaluadas y la generación de señales complementarias con tiempo muerto. Asimismo, las mediciones disponibles de la etapa de potencia muestran un comportamiento consistente con la variación de amplitud de la referencia sinusoidal.
+
+La implementación final incorpora las funcionalidades necesarias para continuar con la validación del sistema integrado. No obstante, para determinar el cumplimiento completo de las especificaciones resulta necesario complementar los resultados obtenidos con mediciones temporales y experimentales del lazo de control.
 
 
 ## Conclusiones y aprendizaje obtenido
