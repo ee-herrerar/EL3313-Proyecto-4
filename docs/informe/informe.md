@@ -682,7 +682,7 @@ Con 200 µs/div y unas 20 repeticiones de los pulsos en la pantalla, el período
 
 
 
-En CH1 se observa que el ancho de los pulsos de la rama varía con una envolvente de 50 Hz, y que esa modulación es más pronunciada en la Figura 3 que en la Figura 2. Esto evidencia que el PWM recibe una referencia senoidal y que su amplitud crece con la amplitud solicitada. La tensión en la resistencia, proporcional a la corriente de la carga, presenta el mismo período de aproximadamente 20 ms (50 Hz), con unos 10 períodos en la ventana de 200 ms. Esa ventana cumple el requisito de al menos cinco períodos completos para extraer la fundamental.
+En CH1 se observa que el ancho de los pulsos de la rama varía con una envolvente de 50 Hz, y que esa modulación es más pronunciada en la Figura 4 que en la Figura 5. Esto evidencia que el PWM recibe una referencia senoidal y que su amplitud crece con la amplitud solicitada. La tensión en la resistencia, proporcional a la corriente de la carga, presenta el mismo período de aproximadamente 20 ms (50 Hz), con unos 10 períodos en la ventana de 200 ms. Esa ventana cumple el requisito de al menos cinco períodos completos para extraer la fundamental.
 
 **Figura 4.** Tensión en la resistencia con referencia de 0.2 A .
 
