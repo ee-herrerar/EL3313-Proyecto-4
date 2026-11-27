@@ -677,7 +677,7 @@ Con 200 µs/div y unas 20 repeticiones de los pulsos en la pantalla, el período
 
 **Figura 3.** Tensión de cada rama (CH1, CH2) y tensión diferencial V_AB (rojo) .
 
-![Voltaje AB](figuras-informe/voltaje_AB.jpge)
+![Voltaje AB](figuras-informe/voltaje_AB.jpeg)
 
 
 
@@ -686,13 +686,13 @@ En CH1 se observa que el ancho de los pulsos de la rama varía con una envolvent
 
 **Figura 4.** Tensión en la resistencia con referencia de 0.2 A .
 
-![Voltaje resistencia con 0.2 A](figuras-informe/voltaje_0.2.jpge)
+![Voltaje resistencia con 0.2 A](figuras-informe/voltaje_0.2.jpeg)
 
 
 
 **Figura 5.** Tensión en la resistencia con referencia de 0.5 A.
 
-![Voltaje resistencia con 0.5 A](figuras-informe/voltaje_0.5.jpge)
+![Voltaje resistencia con 0.5 A](figuras-informe/voltaje_0.5.jpeg)
 
 
 
