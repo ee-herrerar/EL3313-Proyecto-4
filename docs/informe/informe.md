@@ -360,17 +360,37 @@ Por ejemplo, 1 000 muestras en texto de 6 caracteres a 115 200 baudios requieren
 
 ### 5. Controlador proporcional-resonante (PR) discreto
 
-El controlador proporcional-resonante (PR) es un algoritmo de control diseñado para realizar el seguimiento de señales sinusoidales. Combina una acción proporcional, que responde al error instantáneo, con una acción resonante, que proporciona una ganancia elevada alrededor de una frecuencia determinada.
+El controlador proporcional-resonante (PR) es un algoritmo de control diseñado para realizar el seguimiento de señales sinusoidales. Combina una acción proporcional, que responde al error instantáneo, con una acción resonante de ancho de banda finito, que proporciona una ganancia elevada alrededor de la frecuencia fundamental de referencia y permite reducir el error en estado estacionario para señales sinusoidales.
+
+$$
+G_{PR}(s)=K_p+\frac{2K_i\omega_c s}
+{s^2+2\omega_c s+\omega_0^2}
+$$
 
 En este proyecto, el controlador se plantea para seguir una referencia sinusoidal de corriente de 50 Hz, cuya frecuencia angular corresponde a:
 
-\[
-\omega_0=2\pi(50)\approx314,16\ \text{rad/s}
-\]
+$$
+\omega_0 = 2\pi(50) \approx 314.16\ \text{rad/s}
+$$
 
-Para implementarlo en el procesador MicroBlaze V, el controlador debe discretizarse y expresarse mediante una ecuación en diferencias. Esta ecuación permite calcular la acción de control a partir del error actual y de valores almacenados de iteraciones anteriores.
+Para implementarlo en el procesador MicroBlaze V, el controlador debe discretizarse y expresarse mediante una ecuación en diferencias. Esta ecuación permite calcular la acción de control a partir del error actual y de valores almacenados de iteraciones anteriores. Su ejecución requiere establecer un período de muestreo constante y coordinar la adquisición de datos con las actualizaciones de la señal de control.
 
-Su ejecución requiere establecer un período de muestreo constante y coordinar la adquisición de datos con las actualizaciones de la señal de control.
+El equipo de PEDP discretizo el controlador usando el método de Tustin con prewarping. Para el calculo de los coeficientes se definieron los siguientes parámetros, Kp=6, Kr=600 y $\omega$ = 5 rad/s. A continuación se muestra la ecuación de diferencias y sus coeficientes. 
+
+$$
+u[k]=-a_1u[k-1]-a_2u[k-2]
++b_0e[k]+b_1e[k-1]+b_2e[k-2]
+$$
+
+$$
+\begin{aligned}
+a_1 &\approx -1.99969 \\
+a_2 &\approx 0.99975 \\
+b_0 &\approx 6.07499 \\
+b_1 &\approx -11.99813 \\
+b_2 &\approx 5.92351
+\end{aligned}
+$$
 
 En la versión actual del proyecto se ha comprobado el funcionamiento de las interrupciones periódicas del AXI Timer. La implementación y validación del algoritmo PR dentro de la aplicación C permanecen pendientes.
 
