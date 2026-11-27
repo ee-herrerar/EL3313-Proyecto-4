@@ -671,6 +671,29 @@ Las figuras son vistas generales y su escala de cientos de microsegundos no perm
 ![Salidas PWM y disparo de muestreo](figuras-informe/pwm_tb-sim_segundo.png)
 
 
+En CH1 y CH2 las dos ramas conmutan entre 0 y unos 12 V, con anchos de pulso similares (ciclo cercano al 50 %). En esa condición la modulación unipolar da d_A ≈ d_B, por lo que la tensión media V_AB = Vdc · (d_A − d_B) es cercana a cero, que es lo que muestra la traza roja. Esta captura corresponde entonces a referencia nula o muy pequeña. Las espigas visibles en los flancos tienen tres causas probables: el desfase entre los flancos de ambas ramas (tiempo muerto y retardos de los drivers), las oscilaciones propias de la conmutación de una carga inductiva y el acoplamiento por las puntas de prueba. La Figura 1 no muestra los tres niveles (+12 V, 0, −12 V) característicos de la modulación unipolar con corriente circulando; para evidenciarlo hace falta una captura con referencia no nula y una escala de 20 a 50 µs/div.
+
+Con 200 µs/div y unas 20 repeticiones de los pulsos en la pantalla, el período de conmutación es del orden de 100 µs, es decir unos 10 kHz. Debe confirmarse con los cursores y compararse con la frecuencia configurada en freq_sel.
+
+**Figura 3.** Tensión de cada rama (CH1, CH2) y tensión diferencial V_AB (rojo) *.
+
+<img width="672" height="421" alt="WhatsApp Image 2026-11-26 at 7 56 39 PM" src="https://github.com/user-attachments/assets/bbd3b271-435c-4b28-9eb0-2de7d72f06b3" />
+
+
+En CH1 se observa que el ancho de los pulsos de la rama varía con una envolvente de 50 Hz, y que esa modulación es más pronunciada en la Figura 3 que en la Figura 2. Esto evidencia que el PWM recibe una referencia senoidal y que su amplitud crece con la amplitud solicitada. La tensión en la resistencia, proporcional a la corriente de la carga, presenta el mismo período de aproximadamente 20 ms (50 Hz), con unos 10 períodos en la ventana de 200 ms. Esa ventana cumple el requisito de al menos cinco períodos completos para extraer la fundamental.
+
+**Figura 4.** Tensión en la resistencia con referencia de 0.2 A *.
+
+<img width="670" height="419" alt="WhatsApp Image 2026-11-26 at 7 57 44 PM" src="https://github.com/user-attachments/assets/a5d632ba-0510-4c4d-8ca9-8377c506fa91" />
+
+
+
+**Figura 5.** Tensión en la resistencia con referencia de 0.5 A*.
+
+<img width="662" height="422" alt="WhatsApp Image 2026-11-26 at 7 58 12 PM" src="https://github.com/user-attachments/assets/36eb53ba-354a-48a0-9584-b5dc5fa59165" />
+
+
+
 ### Análisis de resultados de la plataforma digital
 
 Las pruebas realizadas sobre MicroBlaze V permitieron comprobar la ejecución de programas desarrollados en C y la comunicación con los periféricos mediante AXI. La transmisión de mensajes por UART confirmó el funcionamiento de la interfaz serial y permitió observar el estado del sistema durante las pruebas.
